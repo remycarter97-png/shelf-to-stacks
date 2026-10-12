@@ -1,0 +1,34 @@
+{
+  "name": "shelf-to-stacks",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "test": "tsx --test tests/*.test.ts",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "@fontsource/fraunces": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@supabase/supabase-js": "^2.117.3",
+    "@tanstack/react-query": "^5.104.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

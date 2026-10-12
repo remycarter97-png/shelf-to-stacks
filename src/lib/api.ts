@@ -1,0 +1,39 @@
+import type {
+  AppConfig,
+  AvailabilityRequest,
+  AvailabilityResponse,
+  LibbyResponse,
+  Recommendation,
+  ShelfResponse,
+} from "../../shared/types";
+
+async function call<T>(url: string, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    throw new Error(navigator.onLine ? "Couldn't reach Shelf to Stacks. Try again." : "You're offline.");
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || `Request failed (${res.status}).`), { status: res.status });
+  return body as T;
+}
+
+const post = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const api = {
+  shelf: (userId: string, refresh = false) =>
+    call<ShelfResponse & { userId: string }>("/api/shelf", post({ userId, refresh })),
+  availability: (req: AvailabilityRequest) => call<AvailabilityResponse>("/api/availability", post(req)),
+  libby: (key: string, title: string, author: string) =>
+    call<LibbyResponse>(
+      `/api/libby?${new URLSearchParams({ key, title, author }).toString()}`,
+    ),
+  recommend: (books: Array<{ title: string; author: string }>) =>
+    call<{ recommendations: Recommendation[] }>("/api/recommend", post({ books })),
+  config: () => call<AppConfig>("/api/config"),
+};

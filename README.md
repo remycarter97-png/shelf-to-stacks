@@ -1,0 +1,75 @@
+# Shelf to Stacks
+
+Your Goodreads want-to-read shelf, checked against your public library's catalog. Works on desktop and phones, and installs to the home screen on iPhone and Android like an app.
+
+## What's in it
+
+- **Shelf check**: paste a Goodreads user ID or profile link; the whole Want to Read shelf loads (up to 1,000 books).
+- **Live availability** for Boston Public Library, and for any library whose catalog is on BiblioCommons ("Other library…"). Books are checked about 15 at a time instead of one by one.
+- **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
+- **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
+- **More ways to read & buy**: live Libby ebook/audiobook status, a Kindle Unlimited search, and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
+- **Book club vote**: shortlist books, create a voting link, share it. One vote per device (voting again changes it).
+- **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
+- **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).
+- **Remembers you**: Goodreads ID, library, results and shortlist are saved on the device only. No accounts.
+
+## Set it up (about 15 minutes)
+
+### 1. Book club database (Supabase, free)
+
+1. Create a new project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**.
+3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
+
+### 2. Deploy (Vercel, free)
+
+1. At [vercel.com](https://vercel.com), click **Add New → Project** and import this GitHub repository. Vercel detects the settings automatically.
+2. Before clicking **Deploy**, open **Environment Variables** and add:
+
+| Name | Value | Needed? |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | Supabase Project URL | Yes, for book club |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon public key | Yes, for book club |
+| `SCRAPERAPI_KEY` | Your working ScraperAPI key | Optional backup for BPL lookups |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Added for you by the Upstash integration (Vercel → Storage / Marketplace) | Optional; shares the cache and rate limits across servers |
+
+3. Click **Deploy**. You get a link like `shelf-to-stacks.vercel.app`; add your own domain later under **Settings → Domains**.
+
+### 3. Install on your phone
+
+- **iPhone:** open the site in Safari → tap **Share** → **Add to Home Screen**.
+- **Android:** open the site in Chrome → tap **Install** on the banner (or ⋮ → **Install app**).
+
+## Turning on AI recommendations later
+
+The section stays hidden until three variables are set in Vercel (then redeploy):
+
+| Name | Example |
+| --- | --- |
+| `AI_PROVIDER` | `anthropic` or `openai` (any OpenAI-compatible service, e.g. Gemini or OpenRouter) |
+| `AI_API_KEY` | your provider's key |
+| `AI_MODEL` | the model name your provider gives you |
+| `AI_BASE_URL` | only for non-OpenAI services using `openai`, e.g. `https://generativelanguage.googleapis.com/v1beta/openai` |
+
+Requests are limited to 5 per visitor per 10 minutes and 200 per hour site-wide. To add a different kind of provider, add one function in `server/ai.ts`.
+
+## About catalog access
+
+Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then your ScraperAPI key if set, and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The Minuteman catalog blocks automated requests entirely, so those libraries are link-only. The lasting fix is permission: ask BPL, Minuteman Library Network or BiblioCommons for sanctioned access. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
+
+## For developers
+
+```bash
+npm install
+cp .env.example .env.local   # fill in what you have
+npm run dev                  # app + API at http://localhost:5173
+npm test                     # server tests (outside services simulated)
+npm run build                # type-check + production build
+```
+
+- `src/` — React app (Vite, Tailwind). `src/lib/useAvailability.ts` runs the parallel checks and saved results.
+- `api/` — one Vercel Function per file: `shelf`, `availability`, `libby`, `recommend`, `config`.
+- `server/` — shared server logic: Goodreads RSS, BiblioCommons lookups with circuit breakers, Libby, AI providers, cache.
+- `supabase/migrations/` — book club tables and the two voting functions.
+- `npm run icons` regenerates the home-screen icons from `scripts/make-icons.mjs`.
