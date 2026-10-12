@@ -44,6 +44,8 @@ const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 }
 beforeEach(() => {
   resetBreakers();
   delete process.env.SCRAPERAPI_KEY;
+  delete process.env.BRIGHTDATA_API_KEY;
+  delete process.env.BRIGHTDATA_ZONE;
   delete process.env.AI_PROVIDER;
 });
 
@@ -115,6 +117,42 @@ test("blocked catalog + bad proxy key → 'couldn't check' with a catalog link, 
   const before = calls.length;
   await checkBook({ title: "Another Book", author: "B", isbn: "3" }, "bpl");
   assert.equal(calls.length, before, "both paths are paused, so no wasted requests");
+});
+
+test("blocked catalog uses Bright Data first, sending the key in a header and the zone in the body", async () => {
+  process.env.BRIGHTDATA_API_KEY = "bd-key";
+  process.env.BRIGHTDATA_ZONE = "web_unlocker1";
+  process.env.SCRAPERAPI_KEY = "sa-key";
+  let seen: { auth?: string | null; body?: any } = {};
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === "https://api.brightdata.com/request") {
+      seen = { auth: new Headers(init?.headers).get("authorization"), body: JSON.parse(String(init?.body)) };
+      return ok(bib("S2", 3, 5));
+    }
+    return new Response("", { status: 403 });
+  }) as typeof fetch;
+  calls.length = 0;
+  const r = await checkBook({ title: "Bright Book", author: "A", isbn: "4" }, "bpl");
+  assert.equal(r.status, "available");
+  assert.equal(seen.auth, "Bearer bd-key");
+  assert.equal(seen.body.zone, "web_unlocker1");
+  assert.equal(seen.body.format, "raw");
+  assert.match(seen.body.url, /gateway\.bibliocommons\.com\/v2\/libraries\/bpl/);
+  assert.ok(!calls.some((c) => c.includes("scraperapi")), "ScraperAPI not needed when Bright Data works");
+});
+
+test("Bright Data refusing the key falls through to ScraperAPI", async () => {
+  process.env.BRIGHTDATA_API_KEY = "bad";
+  process.env.BRIGHTDATA_ZONE = "z";
+  process.env.SCRAPERAPI_KEY = "sa-key";
+  mockFetch((url) =>
+    url.startsWith("https://api.brightdata.com") ? new Response("", { status: 401 })
+    : url.startsWith("https://api.scraperapi.com") ? ok(bib("S3", 1, 2))
+    : new Response("", { status: 403 }));
+  const r = await checkBook({ title: "Fallthrough Book", author: "A", isbn: "5" }, "bpl");
+  assert.equal(r.status, "available");
 });
 
 test("checks run in parallel, not one at a time", async () => {

@@ -3,10 +3,11 @@
 //
 // Order of attempts for each search:
 //   1. Direct request to the BiblioCommons gateway.
-//   2. If the direct path is blocked, the ScraperAPI proxy (only when SCRAPERAPI_KEY is set).
-// Both paths have circuit breakers so one bad stretch doesn't slow every book down:
-//   - Direct blocked (403/422/429) → skip direct for 2 minutes and go straight to the proxy.
-//   - Proxy says 401/403 (bad key or no credits) → skip the proxy for 10 minutes.
+//   2. Bright Data Web Unlocker (when BRIGHTDATA_API_KEY and BRIGHTDATA_ZONE are set).
+//   3. ScraperAPI (when SCRAPERAPI_KEY is set).
+// Every path has a circuit breaker so one bad stretch doesn't slow every book down:
+//   - Direct blocked (403/422/429) → skip direct for 2 minutes.
+//   - A proxy refuses the key or has no credits (401/402/403/407) → skip that proxy for 10 minutes.
 // A book that can't be checked comes back as status "error" with a catalog search link,
 // so the reader always has somewhere to go.
 
@@ -18,13 +19,16 @@ const DIRECT_TIMEOUT_MS = 7_000;
 const PROXY_TIMEOUT_MS = 15_000;
 const RESULT_TTL_SECONDS = 15 * 60;
 
-const breaker = { directBlockedUntil: 0, proxyDisabledUntil: 0 };
+const breaker = { directBlockedUntil: 0, brightdataOffUntil: 0, scraperapiOffUntil: 0 };
 
 /** Exposed for tests. */
 export function resetBreakers() {
   breaker.directBlockedUntil = 0;
-  breaker.proxyDisabledUntil = 0;
+  breaker.brightdataOffUntil = 0;
+  breaker.scraperapiOffUntil = 0;
 }
+
+const KEY_REFUSED = new Set([401, 402, 403, 407]);
 
 export function safeLibraryCode(lib: unknown): string {
   const l = String(lib || "bpl").toLowerCase().trim();
@@ -103,16 +107,41 @@ async function direct(target: string, lib: string): Promise<FetchOutcome> {
   return { kind: "failed" };
 }
 
-async function viaProxy(target: string): Promise<FetchOutcome> {
+async function viaBrightData(target: string): Promise<FetchOutcome> {
+  const key = process.env.BRIGHTDATA_API_KEY;
+  const zone = process.env.BRIGHTDATA_ZONE;
+  if (!key || !zone || Date.now() < breaker.brightdataOffUntil) return { kind: "failed" };
+  try {
+    const res = await fetchWithTimeout(
+      "https://api.brightdata.com/request",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ zone, url: target, format: "raw" }),
+      },
+      PROXY_TIMEOUT_MS,
+    );
+    if (KEY_REFUSED.has(res.status)) {
+      console.warn(`Bright Data refused the request (HTTP ${res.status}); pausing it for 10 minutes. Check the API key, zone name and balance.`);
+      breaker.brightdataOffUntil = Date.now() + 10 * 60_000;
+      return { kind: "failed" };
+    }
+    return await readCatalogReply(res);
+  } catch {
+    return { kind: "failed" };
+  }
+}
+
+async function viaScraperApi(target: string): Promise<FetchOutcome> {
   const key = process.env.SCRAPERAPI_KEY;
-  if (!key || Date.now() < breaker.proxyDisabledUntil) return { kind: "failed" };
-  // ScraperAPI only accepts the key as a query parameter, so this URL is never logged.
+  if (!key || Date.now() < breaker.scraperapiOffUntil) return { kind: "failed" };
+  // ScraperAPI only accepts the key in the address; this address is never logged.
   const url = `https://api.scraperapi.com/?api_key=${encodeURIComponent(key)}&url=${encodeURIComponent(target)}`;
   try {
     const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, PROXY_TIMEOUT_MS);
-    if (res.status === 401 || res.status === 403) {
-      console.warn(`ScraperAPI refused the key (HTTP ${res.status}); pausing the proxy for 10 minutes.`);
-      breaker.proxyDisabledUntil = Date.now() + 10 * 60_000;
+    if (KEY_REFUSED.has(res.status)) {
+      console.warn(`ScraperAPI refused the key (HTTP ${res.status}); pausing it for 10 minutes.`);
+      breaker.scraperapiOffUntil = Date.now() + 10 * 60_000;
       return { kind: "failed" };
     }
     return await readCatalogReply(res);
@@ -127,8 +156,11 @@ async function search(lib: string, query: string): Promise<FetchOutcome> {
   )}&searchType=keyword`;
   const first = await direct(target, lib);
   if (first.kind === "ok") return first;
-  const second = await viaProxy(target);
-  return second.kind === "ok" ? second : first;
+  for (const proxy of [viaBrightData, viaScraperApi]) {
+    const out = await proxy(target);
+    if (out.kind === "ok") return out;
+  }
+  return first;
 }
 
 export async function checkBook(

@@ -31,7 +31,9 @@ Your Goodreads want-to-read shelf, checked against your public library's catalog
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | Supabase Project URL | Yes, for book club |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon public key | Yes, for book club |
-| `SCRAPERAPI_KEY` | Your working ScraperAPI key | Optional backup for BPL lookups |
+| `BRIGHTDATA_API_KEY` | Your Bright Data API key | Optional backup for BPL lookups |
+| `BRIGHTDATA_ZONE` | Your Web Unlocker zone name (zone's **Overview** tab) | Needed with the Bright Data key |
+| `SCRAPERAPI_KEY` | A working ScraperAPI key | Optional second backup |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Added for you by the Upstash integration (Vercel → Storage / Marketplace) | Optional; shares the cache and rate limits across servers |
 
 3. Click **Deploy**. You get a link like `shelf-to-stacks.vercel.app`; add your own domain later under **Settings → Domains**.
@@ -56,7 +58,7 @@ Requests are limited to 5 per visitor per 10 minutes and 200 per hour site-wide.
 
 ## About catalog access
 
-Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then your ScraperAPI key if set, and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The Minuteman catalog blocks automated requests entirely, so those libraries are link-only. The lasting fix is permission: ask BPL, Minuteman Library Network or BiblioCommons for sanctioned access. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
+Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then Bright Data, then ScraperAPI (whichever are set up), and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The Minuteman catalog blocks automated requests entirely, so those libraries are link-only. The lasting fix is permission: ask BPL, Minuteman Library Network or BiblioCommons for sanctioned access. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
 
 ## For developers
 
