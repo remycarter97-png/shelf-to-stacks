@@ -10,7 +10,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
-- **Book club vote**: shortlist books, create a voting link, share it. One vote per device (voting again changes it).
+- **Book club vote**: shortlist books, create a voting link, share it. Members rank their top 3; the winner is decided by instant-runoff (ranked-choice) counting, with the round-by-round count shown. One ballot per device (voting again updates it).
 - **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
 - **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).
 - **Remembers you**: Goodreads ID, library, results and shortlist are saved on the device only. No accounts.
@@ -20,7 +20,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 ### 1. Book club database (Supabase, free)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**.
+2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting).
 3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Deploy (Vercel, free)
