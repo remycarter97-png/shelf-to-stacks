@@ -11,6 +11,7 @@ import {
 import { prettyFormat, timeAgo } from "../lib/format";
 import { STALE_MS } from "../lib/useAvailability";
 import { MoreWays } from "./MoreWays";
+import { MoreLikeThis } from "./MoreLikeThis";
 import { OutLink, cx } from "./ui";
 
 export type CardState = { result?: Availability; checking: boolean; checkedAt?: number; failedAt?: number };
@@ -173,6 +174,7 @@ export function BookCard({
         </div>
 
         {live && r?.editions && r.editions.length > 0 && <Editions editions={r.editions} shelfIsbn={book.isbn} exact={!!r.exactEdition} library={library} />}
+        <MoreLikeThis book={book} library={library} />
         <MoreWays title={book.title} author={book.author} isbn={book.isbn} library={library} />
       </div>
     </li>

@@ -100,6 +100,13 @@ export function parseRecommendations(text: string): Recommendation[] {
     .slice(0, 12);
 }
 
+/** Sends a prompt to the configured provider and returns its text reply. */
+export async function askAi(prompt: string): Promise<string> {
+  const cfg = aiConfig();
+  if (!cfg) throw new HttpError("Recommendations aren't turned on for this site yet.", 501);
+  return PROVIDERS[cfg.provider](prompt, cfg);
+}
+
 export async function recommend(books: Array<{ title: string; author: string }>): Promise<Recommendation[]> {
   const cfg = aiConfig();
   if (!cfg) throw new HttpError("Recommendations aren't turned on for this site yet.", 501);

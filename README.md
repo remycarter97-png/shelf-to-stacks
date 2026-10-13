@@ -45,7 +45,9 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **iPhone:** open the site in Safari → tap **Share** → **Add to Home Screen**.
 - **Android:** open the site in Chrome → tap **Install** on the banner (or ⋮ → **Install app**).
 
-## Turning on AI recommendations later
+## Turning on AI recommendations
+
+Turns on **More like this** on every book (similar books already on your list first, then new ones) and **Books you might want to add**.
 
 The section stays hidden until three variables are set in Vercel (then redeploy):
 

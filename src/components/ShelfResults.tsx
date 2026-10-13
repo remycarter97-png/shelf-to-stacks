@@ -3,6 +3,7 @@ import { bookKey, type Book, type Status } from "../../shared/types";
 import type { LibrarySystem } from "../lib/libraries";
 import { prettyFormat, timeAgo } from "../lib/format";
 import { STALE_MS, useAvailability } from "../lib/useAvailability";
+import { ShelfContext } from "../lib/shelfContext";
 import { load, save } from "../lib/storage";
 import { PAGE_SIZES, Pagination } from "./Pagination";
 import { BookCard } from "./BookCard";
@@ -26,11 +27,13 @@ export function ShelfResults({
   library,
   picks,
   onTogglePick,
+  aiEnabled = false,
 }: {
   books: Book[];
   library: LibrarySystem;
   picks: ClubPick[];
   onTogglePick: (p: ClubPick) => void;
+  aiEnabled?: boolean;
 }) {
   const { entries, pending, retry, refreshAll, live } = useAvailability(books, library);
   const [filter, setFilter] = useState<Filter>("all");
@@ -135,6 +138,11 @@ export function ShelfResults({
       setPage(Math.floor(firstIndex / n) + 1);
     },
   };
+
+  const shelfCtx = useMemo(
+    () => ({ books, lookup: (b: Book) => entries.get(bookKey(b))?.result, aiEnabled }),
+    [books, entries, aiEnabled],
+  );
 
   const checking = rows.filter((r) => r.checking).length;
   const done = books.length - checking;
@@ -282,6 +290,7 @@ export function ShelfResults({
         </div>
       )}
 
+      <ShelfContext.Provider value={shelfCtx}>
       <ul className="mt-4 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         {pageRows.map((r) => (
           <BookCard
@@ -297,6 +306,7 @@ export function ShelfResults({
           />
         ))}
       </ul>
+      </ShelfContext.Provider>
       {shown.length === 0 && (
         <div className="mt-6 rounded-md border border-border/60 bg-card p-4 text-sm">
           <p className="font-medium">

@@ -301,7 +301,14 @@ export function Home() {
         )}
         {books.length > 0 && library && (
           <>
-            <ShelfResults key={`${library.id}:${library.biblioCode ?? ""}`} books={books} library={library} picks={picks} onTogglePick={togglePick} />
+            <ShelfResults
+              key={`${library.id}:${library.biblioCode ?? ""}`}
+              books={books}
+              library={library}
+              picks={picks}
+              onTogglePick={togglePick}
+              aiEnabled={!!config.data?.recommendations}
+            />
             <BookClubPanel picks={picks} onRemove={(id) => setPicks((p) => p.filter((x) => x.id !== id))} />
             {config.data?.recommendations && <Recommendations books={books} library={library} />}
           </>

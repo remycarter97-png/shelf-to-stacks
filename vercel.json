@@ -2,22 +2,48 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "functions": {
-    "api/availability.ts": { "maxDuration": 60 },
-    "api/recommend.ts": { "maxDuration": 60 }
+    "api/availability.ts": {
+      "maxDuration": 60
+    },
+    "api/recommend.ts": {
+      "maxDuration": 60
+    },
+    "api/similar.ts": {
+      "maxDuration": 60
+    }
   },
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
       ]
     },
     {
       "source": "/sw.js",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     }
   ]
 }
