@@ -20,7 +20,19 @@ type Member = ClubMember & {
   at: number;
 };
 
-const MEMBERS_KEY = "club-members";
+const CLUBS_KEY = "clubs:v1";
+const ACTIVE_KEY = "active-club";
+const OLD_MEMBERS_KEY = "club-members";
+const MAX_CLUBS = 20;
+
+type Club = { id: string; name: string; members: Member[] };
+
+/** Saved clubs. The first version kept one unnamed member list; it becomes "My book club". */
+function loadClubs(): Club[] {
+  const clubs = load<Club[] | null>(CLUBS_KEY, null);
+  if (clubs?.length) return clubs;
+  return [{ id: "club-1", name: "My book club", members: load<Member[]>(OLD_MEMBERS_KEY, []) }];
+}
 const MAX_MEMBERS = 15;
 
 function newId() {
@@ -40,15 +52,49 @@ function sourceLabel(m: Member) {
 }
 
 export function ClubPage() {
-  const [members, setMembers] = useState<Member[]>(() => load<Member[]>(MEMBERS_KEY, []));
+  const [clubs, setClubs] = useState<Club[]>(loadClubs);
+  const [activeId, setActiveId] = useState<string>(() => {
+    const id = load<string>(ACTIVE_KEY, "");
+    const all = loadClubs();
+    return all.some((c) => c.id === id) ? id : all[0].id;
+  });
+  const club = clubs.find((c) => c.id === activeId) ?? clubs[0];
+  const members = club.members;
+  const setMembers = (fn: (list: Member[]) => Member[]) =>
+    setClubs((cs) => cs.map((c) => (c.id === club.id ? { ...c, members: fn(c.members) } : c)));
   const [minLists, setMinLists] = useState(2);
   const [selected, setSelected] = useState<string[]>([]);
-  const [voteTitle, setVoteTitle] = useState("Our next book club pick");
+  const [voteTitle, setVoteTitle] = useState("");
   const [voteErr, setVoteErr] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState<string | null>(null);
 
-  useEffect(() => save(MEMBERS_KEY, members), [members]);
+  useEffect(() => save(CLUBS_KEY, clubs), [clubs]);
+  useEffect(() => save(ACTIVE_KEY, club.id), [club.id]);
+
+  const switchClub = (id: string) => {
+    setActiveId(id);
+    setSelected([]);
+    setMinLists(2);
+  };
+  const newClub = () => {
+    const name = window.prompt("Name for the new book club:", `Book club ${clubs.length + 1}`)?.trim();
+    if (!name) return;
+    const c: Club = { id: newId(), name: name.slice(0, 60), members: [] };
+    setClubs((cs) => [...cs, c].slice(0, MAX_CLUBS));
+    switchClub(c.id);
+  };
+  const renameClub = () => {
+    const name = window.prompt("Rename this book club:", club.name)?.trim();
+    if (name) setClubs((cs) => cs.map((c) => (c.id === club.id ? { ...c, name: name.slice(0, 60) } : c)));
+  };
+  const deleteClub = () => {
+    if (!window.confirm(`Delete “${club.name}” and its ${members.length} saved members from this device?`)) return;
+    const rest = clubs.filter((c) => c.id !== club.id);
+    const next = rest.length ? rest : [{ id: newId(), name: "My book club", members: [] }];
+    setClubs(next);
+    switchClub(next[0].id);
+  };
 
   const libId = load<string>("library", "");
   const library: LibrarySystem | null =
@@ -90,7 +136,7 @@ export function ClubPage() {
     setVoteErr(null);
     try {
       const books = shared.filter((c) => selected.includes(c.key)).map((c) => c.book);
-      await createVote(voteTitle, books.map((b) => ({ title: b.title, author: b.author, imageUrl: b.imageUrl })));
+      await createVote(voteTitle.trim() || `${club.name}: our next pick`, books.map((b) => ({ title: b.title, author: b.author, imageUrl: b.imageUrl })));
     } catch (e) {
       setVoteErr((e as Error).message);
     } finally {
@@ -122,10 +168,36 @@ export function ClubPage() {
           can pick a shortlist and start a ranked vote.
         </p>
 
+        <section className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border/70 bg-card p-3" aria-label="Your book clubs">
+          <label htmlFor="club-select" className="text-sm text-muted-foreground">
+            Club
+          </label>
+          <Select id="club-select" value={club.id} onChange={(e) => switchClub(e.target.value)} className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:max-w-sm sm:basis-auto">
+            {clubs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.members.length})
+              </option>
+            ))}
+          </Select>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {clubs.length < MAX_CLUBS && (
+              <button type="button" onClick={newClub} className="py-1 font-medium text-link underline underline-offset-2">
+                + New club
+              </button>
+            )}
+            <button type="button" onClick={renameClub} className="py-1 text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              Rename
+            </button>
+            <button type="button" onClick={deleteClub} className="py-1 text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              Delete
+            </button>
+          </div>
+        </section>
+
         <section className="mt-8" aria-labelledby="members-heading">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="members-heading" className="font-display text-2xl">
-              Members {members.length > 0 && <span className="text-muted-foreground">({members.length})</span>}
+              {club.name} members {members.length > 0 && <span className="text-muted-foreground">({members.length})</span>}
             </h2>
             {mine && !haveMine && (
               <button
@@ -240,7 +312,7 @@ export function ClubPage() {
                 <div className="flex flex-wrap gap-2 sm:hidden">
                   <QuickPicks shared={shared} onPick={setSelected} />
                 </div>
-                <Input value={voteTitle} onChange={(e) => setVoteTitle(e.target.value)} aria-label="Name of the vote" maxLength={120} className="h-11" />
+                <Input value={voteTitle} onChange={(e) => setVoteTitle(e.target.value)} placeholder={`${club.name}: our next pick`} aria-label="Name of the vote" maxLength={120} className="h-11" />
                 <div className="hidden gap-2 sm:flex">
                   <QuickPicks shared={shared} onPick={setSelected} />
                 </div>
