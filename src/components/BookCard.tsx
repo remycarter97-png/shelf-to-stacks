@@ -40,7 +40,7 @@ export function BookCard({
   const { main, series } = splitSeries(book.title);
   const fallback = catalogLink(library, book.title, book.author, book.isbn);
   const href = r?.catalogUrl || fallback;
-  const primary = "font-medium text-accent-strong underline-offset-2 hover:underline";
+  const primary = "font-medium text-link underline-offset-2 hover:underline";
 
   return (
     <li className="flex min-w-0 gap-4 rounded-lg border border-border/70 bg-card p-4 sm:gap-5 sm:p-5">

@@ -25,7 +25,7 @@ export function MoreWays({
     staleTime: 15 * 60_000,
     retry: 1,
   });
-  const link = "font-medium text-accent-strong underline-offset-2 hover:underline";
+  const link = "font-medium text-link underline-offset-2 hover:underline";
 
   return (
     <div className="mt-3">

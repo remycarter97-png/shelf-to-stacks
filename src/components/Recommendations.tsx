@@ -74,7 +74,7 @@ export function Recommendations({ books, library }: { books: Book[]; library: Li
                   )}
                   <OutLink
                     href={a?.catalogUrl || catalogLink(library, r.title, r.author)}
-                    className="font-medium text-accent-strong underline-offset-2 hover:underline"
+                    className="font-medium text-link underline-offset-2 hover:underline"
                   >
                     {a?.status === "available" ? `Place hold at ${library.short} →` : catalogLinkLabel(library)}
                   </OutLink>

@@ -140,7 +140,7 @@ export function VotePage({ pollId }: { pollId: string }) {
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="font-display text-lg leading-snug [overflow-wrap:anywhere]">
-                          {o.title} {leading && <span className="ml-1 align-middle text-xs font-sans text-accent-strong">Leading</span>}
+                          {o.title} {leading && <span className="ml-1 align-middle text-xs font-sans text-link">Leading</span>}
                         </p>
                         {o.author && <p className="text-sm text-muted-foreground">by {o.author}</p>}
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
