@@ -16,8 +16,27 @@ export type ShelfResponse = { shelfTitle: string; books: Book[] };
 
 export type Status = "available" | "checked_out" | "on_order" | "not_found" | "error";
 
+/** One edition/format of a title in the library catalog. */
+export type Edition = {
+  id: string;
+  title: string;
+  format?: string;
+  year?: string;
+  edition?: string;
+  isbn?: string;
+  availableCopies: number;
+  totalCopies: number;
+  heldCopies: number;
+  onOrder?: boolean;
+  url: string;
+};
+
 export type Availability = {
   status: Status;
+  /** All editions the library has of this title (best match first). */
+  editions?: Edition[];
+  /** True when the best match is the exact edition (same ISBN) on the reader's shelf. */
+  exactEdition?: boolean;
   matchedTitle?: string;
   availableCopies?: number;
   totalCopies?: number;

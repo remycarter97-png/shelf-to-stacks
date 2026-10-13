@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { bookKey, type Book, type Status } from "../../shared/types";
 import type { LibrarySystem } from "../lib/libraries";
 import { prettyFormat, timeAgo } from "../lib/format";
-import { useAvailability } from "../lib/useAvailability";
+import { STALE_MS, useAvailability } from "../lib/useAvailability";
 import { load, save } from "../lib/storage";
 import { PAGE_SIZES, Pagination } from "./Pagination";
 import { BookCard } from "./BookCard";
@@ -34,7 +34,21 @@ export function ShelfResults({
 }) {
   const { entries, pending, retry, refreshAll, live } = useAvailability(books, library);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<Sort>("shelf");
+  const [sort, setSortState] = useState<Sort>(() => load<Sort>("sort", "shelf"));
+  const setSort = (v: Sort) => {
+    setSortState(v);
+    save("sort", v);
+  };
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(navigator.onLine);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", on);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", on);
+    };
+  }, []);
   const [format, setFormat] = useState("all");
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<number>(() => {
@@ -52,7 +66,7 @@ export function ShelfResults({
       books.map((book) => {
         const k = bookKey(book);
         const e = entries.get(k);
-        return { book, key: k, result: e?.result, at: e?.at, checking: pending.has(k) };
+        return { book, key: k, result: e?.result, at: e?.at, failedAt: e?.failedAt, checking: pending.has(k) };
       }),
     [books, entries, pending],
   );
@@ -76,14 +90,18 @@ export function ShelfResults({
   }, [rows]);
 
   const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    // Every word must appear somewhere in the title or author, ignoring accents, case and punctuation.
+    const words = fold(query).split(" ").filter(Boolean);
     const list = rows.filter((r) => {
       const s = r.result?.status;
       if (filter === "available" && s !== "available") return false;
       if (filter === "checked_out" && s !== "checked_out" && s !== "on_order") return false;
       if (filter === "not_found" && s !== "not_found") return false;
       if (format !== "all" && prettyFormat(r.result?.format) !== format) return false;
-      if (q && !`${r.book.title} ${r.book.author}`.toLowerCase().includes(q)) return false;
+      if (words.length) {
+        const hay = fold(`${r.book.title} ${r.book.author}`);
+        if (!words.every((w) => hay.includes(w))) return false;
+      }
       return true;
     });
     if (sort === "shelf") return list;
@@ -121,14 +139,17 @@ export function ShelfResults({
   const checking = rows.filter((r) => r.checking).length;
   const done = books.length - checking;
   const oldest = rows.reduce<number | undefined>((m, r) => (r.at && (!m || r.at < m) ? r.at : m), undefined);
+  const unverified = rows.filter((r) => r.failedAt && r.result && r.result.status !== "error").length;
+  const staleCount = rows.filter((r) => r.at && Date.now() - r.at > STALE_MS).length;
+  const filtersOn = filter !== "all" || format !== "all";
 
   const heading =
     filter === "available"
       ? `${counts.available} available at ${L}`
       : filter === "checked_out"
-        ? `${counts.checked_out} checked out at ${L}`
+        ? `${counts.checked_out} owned by ${L}, all copies out`
         : filter === "not_found"
-          ? `${counts.not_found} not in the ${L} catalog`
+          ? `${counts.not_found} not found at ${L}`
           : `${books.length} ${books.length === 1 ? "book" : "books"} on your shelf`;
 
   return (
@@ -149,6 +170,23 @@ export function ShelfResults({
             ? `${library.name} is part of the Minuteman Library Network, whose catalog doesn't allow automatic checks. Each book links straight to a catalog search.`
             : `We can't check ${library.name} automatically, so each book links to a search that shows libraries near you that have it.`}
         </p>
+      )}
+
+      {live && oldest && (!online || (checking === 0 && (unverified > 0 || staleCount > 0))) && (
+        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          <span>
+            {!online
+              ? `You're offline. Showing availability from ${timeAgo(oldest)}; it can't be verified until you're back online.`
+              : unverified > 0
+                ? `${L} didn't respond, so ${unverified === 1 ? "1 result" : `${unverified} results`} couldn't be re-checked and may be out of date.`
+                : `Some results were last checked ${timeAgo(oldest)} and may have changed.`}
+          </span>
+          {online && (
+            <Button variant="outline" className="min-h-9 px-3" onClick={refreshAll}>
+              Refresh now
+            </Button>
+          )}
+        </div>
       )}
 
       <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
@@ -227,7 +265,7 @@ export function ShelfResults({
         </div>
       )}
 
-      {live && counts.error > 0 && checking === 0 && (
+      {live && online && counts.error > 0 && checking === 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
           <span>
             {counts.error} {counts.error === 1 ? "book" : "books"} couldn't be checked. Each has a link to search {L} yourself.
@@ -249,7 +287,7 @@ export function ShelfResults({
           <BookCard
             key={r.book.id}
             book={r.book}
-            state={{ result: r.result, checking: r.checking, checkedAt: r.at }}
+            state={{ result: r.result, checking: r.checking, checkedAt: r.at, failedAt: r.failedAt }}
             library={library}
             picked={picks.some((p) => p.id === r.book.id)}
             onTogglePick={() =>
@@ -259,7 +297,38 @@ export function ShelfResults({
           />
         ))}
       </ul>
-      {shown.length === 0 && <p className="mt-6 italic text-muted-foreground">No books match.</p>}
+      {shown.length === 0 && (
+        <div className="mt-6 rounded-md border border-border/60 bg-card p-4 text-sm">
+          <p className="font-medium">
+            {query.trim() ? `No books on your list match “${query.trim()}”.` : "No books match these filters."}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {query.trim()
+              ? "Check the spelling, try fewer words, or search by the author's last name."
+              : "Try another filter to see the rest of your list."}
+            {query.trim() && filtersOn ? " Filters are also on, which may be hiding matches." : ""}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {query.trim() && (
+              <Button variant="outline" className="min-h-9 px-3" onClick={() => setQuery("")}>
+                Clear search
+              </Button>
+            )}
+            {filtersOn && (
+              <Button
+                variant="outline"
+                className="min-h-9 px-3"
+                onClick={() => {
+                  setFilter("all");
+                  setFormat("all");
+                }}
+              >
+                Show all books
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       {shown.length > pageSize && (
         <div className="mt-6">
           <Pagination label="Pages, bottom" {...pager} />
@@ -267,4 +336,15 @@ export function ShelfResults({
       )}
     </section>
   );
+}
+
+/** Lowercase, no accents or punctuation: "Brontë's" → "brontes". */
+function fold(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }

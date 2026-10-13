@@ -55,7 +55,7 @@ export async function fetchShelf(userId: string, shelf = "to-read"): Promise<She
         throw new HttpError(
           res.status === 404
             ? "We couldn't find that Goodreads user. Check the ID and try again."
-            : `Goodreads didn't share this shelf (error ${res.status}). Make sure your profile and your Want to Read shelf are public.`,
+            : "This Goodreads profile or its Want to Read shelf looks private, so Goodreads won't share it. Make it public in Goodreads privacy settings, or upload your Goodreads export instead.",
           502,
         );
       }
@@ -67,7 +67,7 @@ export async function fetchShelf(userId: string, shelf = "to-read"): Promise<She
   const first = await getPage(1);
   if (!first.includes("<rss") && !first.includes("<channel")) {
     throw new HttpError(
-      "Goodreads returned something unexpected. Make sure your profile and your Want to Read shelf are public.",
+      "Goodreads didn't share this shelf. This usually means the profile is private. Make it public in Goodreads privacy settings, or upload your Goodreads export instead.",
       502,
     );
   }

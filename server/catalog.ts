@@ -11,7 +11,7 @@
 // A book that can't be checked comes back as status "error" with a catalog search link,
 // so the reader always has somewhere to go.
 
-import type { Availability, Status } from "../shared/types.js";
+import type { Availability, Edition } from "../shared/types.js";
 import { cacheGet, cacheSet } from "./cache.js";
 import { BROWSER_UA, fetchWithTimeout } from "./http.js";
 
@@ -48,20 +48,6 @@ type FetchOutcome =
   | { kind: "ok"; json: any }
   | { kind: "blocked" } // the catalog refused us
   | { kind: "failed" }; // network error, timeout, or odd reply
-
-function statusFrom(a: {
-  statusType?: string;
-  status?: string;
-  availableCopies?: number;
-  onOrderCopies?: number;
-  totalCopies?: number;
-}): Status {
-  const t = String(a.statusType || a.status || "").toUpperCase();
-  if (t === "AVAILABLE" || (a.availableCopies ?? 0) > 0) return "available";
-  if (t === "ON_ORDER" || (a.onOrderCopies ?? 0) > 0) return "on_order";
-  if ((a.totalCopies ?? 0) > 0) return "checked_out";
-  return "not_found";
-}
 
 async function readCatalogReply(res: Response): Promise<FetchOutcome> {
   if (res.status === 403 || res.status === 422 || res.status === 429 || res.status === 202) {
@@ -169,49 +155,49 @@ export async function checkBook(
 ): Promise<Availability> {
   const lib = safeLibraryCode(libInput);
   const title = cleanTitle(book.title);
-  const cacheKey = `av:v2:${lib}:${book.isbn}|${title.toLowerCase()}|${book.author.toLowerCase()}`;
+  const cacheKey = `av:v3:${lib}:${book.isbn}|${title.toLowerCase()}|${book.author.toLowerCase()}`;
   const cached = await cacheGet<Availability>(cacheKey);
   if (cached) return cached;
 
-  const queries: string[] = [];
-  if (book.isbn) queries.push(book.isbn);
-  queries.push(book.author ? `${title} ${book.author}` : title);
-  // Long subtitles often stop a match; try the part before the colon too.
   const short = title.split(":")[0].trim();
-  if (short && short !== title) queries.push(book.author ? `${short} ${book.author}` : short);
+  // Title + author first: one search returns every edition. ISBN search is the fallback for odd titles.
+  const queries: Array<{ q: string; byIsbn: boolean }> = [];
+  queries.push({ q: book.author ? `${short} ${book.author}` : short, byIsbn: false });
+  if (book.isbn) queries.push({ q: book.isbn, byIsbn: true });
+  if (short !== title) queries.push({ q: book.author ? `${title} ${book.author}` : title, byIsbn: false });
 
   const fallbackUrl = catalogSearchUrl(lib, book.author ? `${title} ${book.author}` : title);
   let reachedCatalog = false;
 
-  for (const q of queries) {
+  for (const { q, byIsbn } of queries) {
     const out = await search(lib, q);
     if (out.kind !== "ok") {
       // Catalog unreachable: don't burn time on the other searches.
       return { status: "error", catalogUrl: fallbackUrl };
     }
     reachedCatalog = true;
-    const bibs: Record<string, any> = out.json?.entities?.bibs || {};
-    const ids = Object.keys(bibs);
-    if (!ids.length) continue;
+    const bibs: any[] = Object.values(out.json?.entities?.bibs || {});
+    // A title search can also return study guides and other books; keep the ones that are this book.
+    const matches = byIsbn ? bibs : bibs.filter((b) => sameWork(b?.briefInfo, short, book.author));
+    if (!matches.length) continue;
 
-    // Prefer a record that has availability, and a physical book when there is one.
-    const withAvail = ids.map((id) => bibs[id]).filter((b) => b?.availability);
-    const chosen =
-      withAvail.find((b) => /^(BK|BOOK)$/i.test(String(b?.briefInfo?.format || ""))) ??
-      withAvail[0] ??
-      bibs[ids[0]];
-    const a = chosen.availability || {};
-    const info = chosen.briefInfo || {};
+    const editions = matches.map((b) => toEdition(b, lib)).filter((e): e is Edition => !!e);
+    if (!editions.length) continue;
+    const best = pickBest(editions, book.isbn);
+    const ordered = [best, ...editions.filter((e) => e !== best)].slice(0, 12);
+    const anyAvailable = editions.some((e) => e.availableCopies > 0);
+    const anyOwned = editions.some((e) => e.totalCopies > 0);
+    const anyOnOrder = editions.some((e) => e.onOrder);
     const result: Availability = {
-      status: statusFrom(a),
-      matchedTitle: info.title,
-      availableCopies: a.availableCopies,
-      totalCopies: a.totalCopies,
-      heldCopies: a.heldCopies,
-      format: info.format || a.bibType,
-      catalogUrl: chosen.id
-        ? `https://${lib}.bibliocommons.com/v2/record/${chosen.id}`
-        : catalogSearchUrl(lib, q),
+      status: anyAvailable ? "available" : anyOwned ? "checked_out" : anyOnOrder ? "on_order" : "not_found",
+      matchedTitle: best.title,
+      availableCopies: best.availableCopies,
+      totalCopies: best.totalCopies,
+      heldCopies: best.heldCopies,
+      format: best.format,
+      catalogUrl: best.url,
+      editions: ordered,
+      exactEdition: !!book.isbn && best.isbn === book.isbn,
     };
     await cacheSet(cacheKey, result, RESULT_TTL_SECONDS);
     return result;
@@ -220,4 +206,59 @@ export async function checkBook(
   const result: Availability = { status: reachedCatalog ? "not_found" : "error", catalogUrl: fallbackUrl };
   if (result.status === "not_found") await cacheSet(cacheKey, result, RESULT_TTL_SECONDS);
   return result;
+}
+
+const normText = (s: unknown) =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .split(":")[0]
+    .replace(/^(the|a|an)\s+/, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** Same book (any edition)? Titles must match; the author's last name must appear when both are known. */
+export function sameWork(info: any, title: string, author: string): boolean {
+  const want = normText(title);
+  const got = normText(info?.title);
+  if (!want || !got) return false;
+  if (!(got === want || got.startsWith(want + " ") || want.startsWith(got + " "))) return false;
+  const last = normText(author).split(" ").pop();
+  const authors = [info?.authors, info?.primaryAuthor].flat().filter(Boolean).map(normText).join(" ");
+  return !last || !authors || authors.includes(last);
+}
+
+function toEdition(b: any, lib: string): Edition | null {
+  if (!b?.id) return null;
+  const info = b.briefInfo || {};
+  const a = b.availability || {};
+  const year = String(info.publicationDate ?? info.publicationYear ?? "").match(/\d{4}/)?.[0];
+  const isbns: string[] = [info.isbns, info.isbn].flat().filter(Boolean).map((x: unknown) => String(x).replace(/[^0-9Xx]/g, ""));
+  return {
+    id: String(b.id),
+    title: String(info.title ?? ""),
+    format: info.format || a.bibType || undefined,
+    year,
+    edition: info.edition ? String(info.edition) : undefined,
+    isbn: isbns.find((x) => x.length === 13) ?? isbns[0],
+    availableCopies: Number(a.availableCopies ?? 0),
+    totalCopies: Number(a.totalCopies ?? 0),
+    heldCopies: Number(a.heldCopies ?? 0),
+    onOrder: String(a.statusType ?? a.status ?? "").toUpperCase() === "ON_ORDER" || Number(a.onOrderCopies ?? 0) > 0,
+    url: `https://${lib}.bibliocommons.com/v2/record/${b.id}`,
+  };
+}
+
+/** Best edition to lead with: the reader's exact ISBN if available, else an available print book, else the most copies. */
+function pickBest(eds: Edition[], isbn: string): Edition {
+  const isBook = (e: Edition) => /^(BK|BOOK)$/i.test(String(e.format ?? ""));
+  const score = (e: Edition) =>
+    (e.availableCopies > 0 ? 1000 : 0) +
+    (isbn && e.isbn === isbn ? 500 : 0) +
+    (isBook(e) ? 100 : 0) +
+    Math.min(e.totalCopies, 99);
+  return eds.reduce((best, e) => (score(e) > score(best) ? e : best), eds[0]);
 }

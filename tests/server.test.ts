@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { parseGoodreadsId, parseRssItems, fetchShelf } from "../server/goodreads.js";
 import { checkBook, resetBreakers } from "../server/catalog.js";
 import { mapLimit } from "../server/http.js";
+import { clearMemoryCache } from "../server/cache.js";
 import { parseRecommendations } from "../server/ai.js";
 import { POST as shelfRoute } from "../api/shelf.js";
 import { POST as availabilityRoute } from "../api/availability.js";
@@ -43,6 +44,7 @@ const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 }
 
 beforeEach(() => {
   resetBreakers();
+  clearMemoryCache();
   delete process.env.SCRAPERAPI_KEY;
   delete process.env.BRIGHTDATA_API_KEY;
   delete process.env.BRIGHTDATA_ZONE;
@@ -80,7 +82,7 @@ test("shelf of 252 books loads all three pages", async () => {
 
 test("private shelf gives a clear message", async () => {
   mockFetch(() => new Response("nope", { status: 403 }));
-  await assert.rejects(fetchShelf("123"), /public/);
+  await assert.rejects(fetchShelf("123"), /private/);
 });
 
 test("available book links to its catalog record", async () => {
@@ -209,4 +211,63 @@ test("AI replies are parsed even with extra text around the list", () => {
   const recs = parseRecommendations('Sure! Here you go:\n[{"title":"Piranesi","author":"Susanna Clarke","reason":"Like X."}]\nEnjoy');
   assert.equal(recs.length, 1);
   assert.equal(recs[0].title, "Piranesi");
+});
+
+const bibsOf = (list: Array<{ id: string; title: string; format: string; year?: string; isbn?: string; avail: number; total: number; holds?: number; authors?: string[] }>) => ({
+  catalogSearch: {},
+  entities: {
+    bibs: Object.fromEntries(
+      list.map((b) => [
+        b.id,
+        {
+          id: b.id,
+          briefInfo: { title: b.title, format: b.format, publicationDate: b.year, isbns: b.isbn ? [b.isbn] : [], authors: b.authors ?? ["Clarke, Susanna"] },
+          availability: { availableCopies: b.avail, totalCopies: b.total, heldCopies: b.holds ?? 0 },
+        },
+      ]),
+    ),
+  },
+});
+
+test("editions: lists every edition, leads with an available print copy, drops unrelated books", async () => {
+  mockFetch(() =>
+    ok(
+      bibsOf([
+        { id: "E1", title: "Piranesi", format: "EBOOK", year: "2020", avail: 0, total: 30, holds: 12 },
+        { id: "B1", title: "Piranesi", format: "BK", year: "2020", isbn: "9781635575637", avail: 4, total: 9 },
+        { id: "L1", title: "Piranesi", format: "LPRINT", year: "2021", avail: 0, total: 2 },
+        { id: "S1", title: "Study Guide to Piranesi", format: "BK", avail: 3, total: 3, authors: ["Guides, Book"] },
+      ]),
+    ),
+  );
+  const r = await checkBook({ title: "Piranesi", author: "Susanna Clarke", isbn: "" }, "bpl");
+  assert.equal(r.status, "available");
+  assert.equal(r.editions?.length, 3, "study guide is not an edition of the book");
+  assert.equal(r.editions?.[0].id, "B1");
+  assert.equal(r.editions?.[0].year, "2020");
+  assert.equal(r.catalogUrl, "https://bpl.bibliocommons.com/v2/record/B1");
+});
+
+test("ownership vs availability: owned but every copy out is 'checked_out', with holds", async () => {
+  mockFetch(() =>
+    ok(bibsOf([{ id: "B2", title: "Piranesi", format: "BK", avail: 0, total: 6, holds: 21 }, { id: "E2", title: "Piranesi", format: "EBOOK", avail: 0, total: 10, holds: 40 }])),
+  );
+  const r = await checkBook({ title: "Piranesi", author: "Susanna Clarke", isbn: "" }, "bpl");
+  assert.equal(r.status, "checked_out");
+  assert.equal(r.totalCopies, 6);
+  assert.equal(r.heldCopies, 21);
+});
+
+test("exact edition: the reader's own ISBN leads when it's available", async () => {
+  mockFetch(() =>
+    ok(
+      bibsOf([
+        { id: "A", title: "Piranesi", format: "BK", isbn: "9781111111111", avail: 2, total: 5 },
+        { id: "M", title: "Piranesi", format: "BK", isbn: "9781635575637", avail: 1, total: 2 },
+      ]),
+    ),
+  );
+  const r = await checkBook({ title: "Piranesi", author: "Susanna Clarke", isbn: "9781635575637" }, "bpl");
+  assert.equal(r.editions?.[0].id, "M");
+  assert.equal(r.exactEdition, true);
 });

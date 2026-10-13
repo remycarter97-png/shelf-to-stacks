@@ -185,3 +185,12 @@ export function buyLinks(title: string, author: string, isbn?: string) {
     { label: "AbeBooks", note: "used", href: `https://www.abebooks.com/servlet/SearchResults?kn=${q}` },
   ];
 }
+
+/** The library's "suggest a purchase" page, when we know it. */
+export function purchaseSuggestionUrl(lib: LibrarySystem): string | undefined {
+  // BiblioCommons libraries (BPL and others) have a built-in suggestion form; readers sign in to use it.
+  if (lib.biblioCode) return `https://${lib.biblioCode}.bibliocommons.com/suggested_purchases`;
+  // Minuteman's Aspen Discovery catalog has a network-wide materials request form.
+  if (lib.network === "minuteman") return "https://catalog.minlib.net/MaterialsRequest/NewRequest";
+  return undefined;
+}

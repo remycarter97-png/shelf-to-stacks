@@ -73,3 +73,8 @@ export async function overLimit(bucket: string, max: number, windowSeconds: numb
   memory.set(key, { until: Date.now() + windowSeconds * 1000, value: cur + 1 });
   return cur + 1 > max;
 }
+
+/** Exposed for tests. */
+export function clearMemoryCache() {
+  memory.clear();
+}

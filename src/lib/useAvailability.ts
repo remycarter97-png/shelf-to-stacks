@@ -14,13 +14,19 @@ const CHUNK = 12;
 const IN_FLIGHT = 3;
 const FRESH_MS = 15 * 60_000;
 const KEEP_MS = 7 * 24 * 3600_000;
+/** Results older than this are flagged "may be out of date". */
+export const STALE_MS = 6 * 3600_000;
 
-export type Entry = { result: Availability; at: number };
+/**
+ * at = when this result was confirmed with the library.
+ * failedAt = a later re-check failed, so this result could not be verified again.
+ */
+export type Entry = { result: Availability; at: number; failedAt?: number };
 
 type Saved = Record<string, Entry>;
 
 function storageKey(lib: LibrarySystem) {
-  return `results:v1:${lib.id}:${lib.biblioCode ?? ""}`;
+  return `results:v2:${lib.id}:${lib.biblioCode ?? ""}`;
 }
 
 function loadSaved(lib: LibrarySystem): Saved {
@@ -79,8 +85,11 @@ export function useAvailability(books: Book[], lib: LibrarySystem) {
             const nextMap = new Map(prev);
             for (const r of results) {
               const old = nextMap.get(r.key);
-              // Never replace a good earlier answer with a failed re-check.
-              if (r.result.status === "error" && old && old.result.status !== "error") continue;
+              // Never replace a good earlier answer with a failed re-check; mark it unverified instead.
+              if (r.result.status === "error" && old && old.result.status !== "error") {
+                nextMap.set(r.key, { ...old, failedAt: now });
+                continue;
+              }
               nextMap.set(r.key, { result: r.result, at: now });
             }
             persist(nextMap);

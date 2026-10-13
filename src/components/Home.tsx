@@ -4,13 +4,12 @@ import type { Book } from "../../shared/types";
 import { importLibraryCsv } from "../../shared/importCsv";
 import { api } from "../lib/api";
 import {
-  DEFAULT_LIBRARY,
   LIBRARIES,
   makeCustomLibrary,
   type CustomLibraryInput,
   type LibrarySystem,
 } from "../lib/libraries";
-import { load, requestPersistentStorage, save } from "../lib/storage";
+import { clearAll, load, requestPersistentStorage, save } from "../lib/storage";
 import { timeAgo } from "../lib/format";
 import { BookClubPanel, type ClubPick } from "./BookClubPanel";
 import { Logo } from "./Logo";
@@ -25,7 +24,8 @@ type SavedShelf = { userId: string; books: Book[]; at: number; origin?: ShelfOri
 
 export function Home() {
   const [userId, setUserId] = useState(() => load("userId", ""));
-  const [libId, setLibId] = useState(() => load("library", DEFAULT_LIBRARY.id));
+  // No library is picked for a first-time visitor; the page asks them to choose one.
+  const [libId, setLibId] = useState(() => load("library", ""));
   const [custom, setCustom] = useState<CustomLibraryInput>(() => load("custom-library", { name: "", catalog: "", libby: "" }));
   const [shelf, setShelf] = useState<SavedShelf | null>(() => load<SavedShelf | null>("shelf", null));
   const [picks, setPicks] = useState<ClubPick[]>(() => load("club-picks", []));
@@ -34,8 +34,8 @@ export function Home() {
   const fileInput = useRef<HTMLInputElement>(null);
   const config = useQuery({ queryKey: ["config"], queryFn: api.config, staleTime: Infinity, retry: false });
 
-  const library: LibrarySystem = useMemo(
-    () => (libId === "custom" ? makeCustomLibrary(custom) : (LIBRARIES.find((l) => l.id === libId) ?? DEFAULT_LIBRARY)),
+  const library: LibrarySystem | null = useMemo(
+    () => (libId === "custom" ? makeCustomLibrary(custom) : (LIBRARIES.find((l) => l.id === libId) ?? null)),
     [libId, custom],
   );
 
@@ -111,7 +111,7 @@ export function Home() {
       <main className="safe-x mx-auto max-w-6xl pb-12">
         <section className="pt-10 sm:pt-14">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {mode === "file" ? "StoryGraph" : "Goodreads"} × {library.name}
+            {mode === "file" ? "StoryGraph" : "Goodreads"} × {library?.name ?? "your library"}
           </p>
           <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] md:text-6xl">
             From your shelf
@@ -146,7 +146,10 @@ export function Home() {
             ))}
           </div>
 
+          <ImportOptions onUpload={() => switchMode("file")} />
+
           {mode === "goodreads" ? (
+          <>
           <form
             className="mt-4 flex max-w-2xl flex-col gap-3 sm:flex-row"
             onSubmit={(e) => {
@@ -164,10 +167,18 @@ export function Home() {
               autoCorrect="off"
               spellCheck={false}
             />
-            <Button type="submit" disabled={fetchShelf.isPending || !userId.trim()} className="h-12 shrink-0 px-6">
-              {fetchShelf.isPending ? "Loading shelf…" : "Check the catalog"}
+            <Button type="submit" disabled={fetchShelf.isPending || !userId.trim() || !library} className="h-12 shrink-0 px-6">
+              {fetchShelf.isPending ? "Loading shelf…" : library ? "Check the catalog" : "Choose a library first"}
             </Button>
           </form>
+          <p className="mt-2 max-w-2xl text-sm leading-snug text-muted-foreground">
+            <b className="font-medium text-foreground">Your Goodreads profile must be public.</b> Goodreads closed its public
+            API, so we can only read public Want to Read shelves.{" "}
+            <button type="button" onClick={() => switchMode("file")} className="text-link underline underline-offset-2">
+              Private profile? Upload your Goodreads export
+            </button>
+          </p>
+          </>
           ) : (
             <div className="mt-4 max-w-2xl">
               <input
@@ -182,9 +193,11 @@ export function Home() {
                 htmlFor="library-file"
                 className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto sm:inline-flex"
               >
-                Upload your StoryGraph export (.csv)
+                Upload your export file (.csv)
               </label>
+              <p className="mt-2 text-sm text-muted-foreground">A StoryGraph or Goodreads library export. The file stays on your device.</p>
               <StoryGraphHelp />
+              <GoodreadsExportHelp />
               {fileError && (
                 <p role="alert" className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {fileError}
@@ -194,7 +207,7 @@ export function Home() {
           )}
 
           <div className="mt-4 flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-            <label htmlFor="library" className="text-muted-foreground">
+            <label htmlFor="library" className={cx(library ? "text-muted-foreground" : "font-medium text-foreground")}>
               My library
             </label>
             <Select
@@ -204,8 +217,12 @@ export function Home() {
                 setLibId(e.target.value);
                 save("library", e.target.value);
               }}
-              className="min-w-0 max-w-full flex-1 sm:flex-none"
+              className={cx("min-w-0 max-w-full flex-1 sm:flex-none", !library && "ring-2 ring-accent")}
+              aria-describedby={!library ? "library-hint" : undefined}
             >
+              <option value="" disabled>
+                Choose your library…
+              </option>
               {LIBRARIES.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
@@ -215,6 +232,13 @@ export function Home() {
             </Select>
           </div>
 
+          {!library && libId !== "custom" && (
+            <p id="library-hint" className="mt-2 text-sm text-muted-foreground">
+              Pick the library where you borrow books. Boston Public Library gets live availability; you can also enter
+              another library with “Other library…”.
+            </p>
+          )}
+
           {libId === "custom" && (
             <CustomLibraryForm
               value={custom}
@@ -222,16 +246,21 @@ export function Home() {
                 setCustom(v);
                 save("custom-library", v);
               }}
-              library={library}
+              library={library!}
             />
           )}
 
           {mode === "goodreads" && <HelpHint />}
 
           {fetchShelf.isError && (
-            <p role="alert" className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {(fetchShelf.error as Error).message}
-            </p>
+            <div role="alert" className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
+              <p className="text-destructive">{(fetchShelf.error as Error).message}</p>
+              {(fetchShelf.error as Error & { status?: number }).status !== 400 && (
+                <button type="button" onClick={() => switchMode("file")} className="mt-1 text-link underline underline-offset-2">
+                  Upload your Goodreads export instead
+                </button>
+              )}
+            </div>
           )}
           {shelf && !fetchShelf.isPending && (shelf.origin ?? "goodreads") === "goodreads" && (
             <p className="mt-3 text-xs text-muted-foreground">
@@ -256,7 +285,18 @@ export function Home() {
           )}
         </section>
 
-        {books.length > 0 && (
+        {books.length > 0 && !library && (
+          <div className="mt-10 rounded-lg border border-border/70 bg-card p-5">
+            <h2 id="results-heading" className="font-display text-2xl">
+              {books.length} {books.length === 1 ? "book" : "books"} ready to check
+            </h2>
+            <p className="mt-1 text-muted-foreground">Choose your library to see which ones you can borrow.</p>
+            <Button className="mt-4" onClick={() => document.getElementById("library")?.focus()}>
+              Choose my library
+            </Button>
+          </div>
+        )}
+        {books.length > 0 && library && (
           <>
             <ShelfResults key={`${library.id}:${library.biblioCode ?? ""}`} books={books} library={library} picks={picks} onTogglePick={togglePick} />
             <BookClubPanel picks={picks} onRemove={(id) => setPicks((p) => p.filter((x) => x.id !== id))} />
@@ -267,7 +307,7 @@ export function Home() {
           <p className="mt-8 italic text-muted-foreground">
             {shelf.origin === "file"
               ? "That export has no books marked to-read."
-              : "That shelf came back empty. Check that your Goodreads profile and Want to Read shelf are public."}
+              : "Goodreads returned no books. Either the Want to Read shelf is empty, or it's hidden by privacy settings. Make the profile public, or upload your Goodreads export instead."}
           </p>
         )}
 
@@ -331,6 +371,85 @@ function CustomLibraryForm({
           ? `Your catalog runs on BiblioCommons, so we'll check availability live.`
           : "If your catalog's address ends in bibliocommons.com we can check availability live. Otherwise each book links to a search of libraries near you."}
       </p>
+    </div>
+  );
+}
+
+/** What each import option reads, and its limits. */
+function ImportOptions({ onUpload }: { onUpload: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 max-w-2xl text-sm">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 text-muted-foreground underline underline-offset-2 hover:text-foreground">
+        What can I import?
+      </button>
+      {open && (
+        <div className="mt-2 overflow-hidden rounded-md border border-border/60 bg-card">
+          <dl className="divide-y divide-border/60">
+            {[
+              [
+                "Goodreads profile link",
+                "Your Want to Read shelf: title, author, ISBN, cover. Refreshes itself hourly.",
+                "Profile and shelf must be public. Up to 1,000 books. Other shelves aren't read.",
+              ],
+              [
+                "Goodreads export file",
+                "Books on your to-read shelf from My Books → Import and export → Export Library.",
+                "Works with private profiles. Doesn't update by itself; upload a new export when your list changes.",
+              ],
+              [
+                "StoryGraph export file",
+                "Books marked to-read from Manage Account → Export StoryGraph Library.",
+                "StoryGraph has no live link, so upload a new export when your list changes. Covers come from Open Library.",
+              ],
+            ].map(([name, reads, limits]) => (
+              <div key={name} className="p-3">
+                <dt className="font-medium">{name}</dt>
+                <dd className="mt-0.5 text-muted-foreground">{reads}</dd>
+                <dd className="mt-0.5 text-muted-foreground">
+                  <span className="font-medium text-foreground">Limits: </span>
+                  {limits}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="border-t border-border/60 p-3 text-muted-foreground">
+            Ratings, reviews and reading history aren't used. Nothing is uploaded to a server except title, author and ISBN
+            for library lookups.{" "}
+            <button type="button" onClick={onUpload} className="text-link underline underline-offset-2">
+              Upload a file
+            </button>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GoodreadsExportHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1 text-sm text-muted-foreground">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 underline underline-offset-2 hover:text-foreground">
+        How do I get my Goodreads export?
+      </button>
+      {open && (
+        <div className="mt-2 rounded-md border border-border/60 bg-card p-3 leading-relaxed">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              On a computer or in a mobile browser, open{" "}
+              <OutLink href="https://www.goodreads.com/review/import" className="underline">
+                goodreads.com/review/import
+              </OutLink>{" "}
+              (My Books → Import and export). The Goodreads app can't do this.
+            </li>
+            <li>
+              Tap <b>Export Library</b> and wait for the link to appear.
+            </li>
+            <li>Download the CSV file, then upload it here. We use the books on your to-read shelf.</li>
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -403,8 +522,20 @@ function About() {
         for each book.
       </p>
       <p className="mt-2">
-        No account needed. Your Goodreads ID, library and last results are saved only on this device, so the app opens
-        instantly next time and still works offline.
+        No account needed. Your list, library, last results, book club shortlist and display choices are saved only on
+        this device, so the app opens instantly next time and still works offline.{" "}
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-foreground"
+          onClick={() => {
+            if (window.confirm("Remove your saved list, library and results from this device?")) {
+              clearAll();
+              window.location.reload();
+            }
+          }}
+        >
+          Clear saved data
+        </button>
       </p>
       <InstallLink className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
         <PhoneIcon />
