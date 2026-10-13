@@ -185,9 +185,3 @@ export function buyLinks(title: string, author: string, isbn?: string) {
     { label: "AbeBooks", note: "used", href: `https://www.abebooks.com/servlet/SearchResults?kn=${q}` },
   ];
 }
-
-export function kindleUnlimitedLink(title: string, author: string) {
-  const q = encodeURIComponent(`${cleanTitle(title)} ${author}`.trim());
-  // Kindle Store search filtered to Kindle Unlimited titles.
-  return `https://www.amazon.com/s?k=${q}&i=digital-text&rh=p_n_feature_nine_browse-bin%3A8529758011`;
-}

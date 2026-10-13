@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../lib/api";
-import { buyLinks, kindleUnlimitedLink, libbyLink, type LibrarySystem } from "../lib/libraries";
+import { buyLinks, libbyLink, type LibrarySystem } from "../lib/libraries";
 import { OutLink } from "./ui";
 
-// "More ways to read & buy": Libby (live where possible), Kindle Unlimited, and where to buy.
+// "More ways to read & buy": Libby (live where possible) and where to buy.
 export function MoreWays({
   title,
   author,
@@ -38,7 +38,7 @@ export function MoreWays({
         {open ? "Hide ways to read & buy" : "More ways to read & buy"}
       </button>
       {open && (
-        <div className="mt-3 grid gap-4 rounded-md border border-border/60 bg-muted/50 p-4 text-sm sm:grid-cols-3">
+        <div className="mt-3 grid gap-4 rounded-md border border-border/60 bg-muted/50 p-4 text-sm sm:grid-cols-2">
           <div>
             <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
               Libby{libbyKey ? ` · ${library.short}` : ""}
@@ -72,15 +72,6 @@ export function MoreWays({
             )}
             <OutLink href={libby.data?.searchUrl ?? libbyLink(library, title, author)} className={link}>
               {libbyKey ? "Open in Libby →" : "Search OverDrive →"}
-            </OutLink>
-          </div>
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Kindle Unlimited</p>
-            <p className="mb-1 leading-snug text-muted-foreground">
-              Amazon doesn't share this publicly, so this opens a Kindle Unlimited search.
-            </p>
-            <OutLink href={kindleUnlimitedLink(title, author)} className={link}>
-              Check Kindle Unlimited →
             </OutLink>
           </div>
           <div>

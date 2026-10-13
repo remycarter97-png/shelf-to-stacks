@@ -8,7 +8,7 @@ Your Goodreads want-to-read shelf, checked against your public library's catalog
 - **Live availability** for Boston Public Library, and for any library whose catalog is on BiblioCommons ("Other library…"). Books are checked about 15 at a time instead of one by one.
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
-- **More ways to read & buy**: live Libby ebook/audiobook status, a Kindle Unlimited search, and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
+- **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
 - **Book club vote**: shortlist books, create a voting link, share it. One vote per device (voting again changes it).
 - **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
 - **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).
