@@ -1,6 +1,6 @@
 // Library systems the app knows about.
 // - Boston Public Library: live availability through its BiblioCommons catalog.
-// - Minuteman Library Network members share one catalog (find.minlib.net) that blocks
+// - Minuteman Library Network members share one catalog (catalog.minlib.net, Aspen Discovery) that blocks
 //   automated lookups, so they get catalog search links.
 // - "Other library": the reader types their library's name. If its catalog is on
 //   BiblioCommons (address ends in bibliocommons.com) it gets live checks too.
@@ -142,7 +142,8 @@ export function splitSeries(title: string): { main: string; series?: string } {
 
 export function minutemanSearchUrl(title: string, author: string) {
   const q = encodeURIComponent(`${cleanTitle(title)} ${author}`.trim());
-  return `https://find.minlib.net/iii/encore/search/C__S${q}__Orightresult__U?lang=eng&suite=cobalt`;
+  // Minuteman's current catalog (Aspen Discovery, since November 2023).
+  return `https://catalog.minlib.net/Search/Results?lookfor=${q}&searchIndex=Keyword`;
 }
 
 export function biblioSearchUrl(code: string, title: string, author: string) {

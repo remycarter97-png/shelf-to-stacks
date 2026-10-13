@@ -28,6 +28,7 @@
 }
 
 :root {
+  /* Light mode: the original Shelf to Stacks (Lovable) palette, value for value. */
   --radius: 0.375rem;
   --background: oklch(0.97 0.015 75);
   --foreground: oklch(0.24 0.03 35);
@@ -35,21 +36,22 @@
   --primary: oklch(0.38 0.09 35);
   --primary-foreground: oklch(0.97 0.02 80);
   --muted: oklch(0.93 0.018 75);
-  --muted-foreground: oklch(0.46 0.04 50);
-  --accent: oklch(0.68 0.13 55); /* terracotta fill: progress bar, highlights */
-  --accent-strong: oklch(0.52 0.13 48); /* terracotta text and buttons, meets 4.5:1 */
-  --accent-foreground: oklch(0.99 0.01 80);
-  --destructive: oklch(0.5 0.18 28);
+  --muted-foreground: oklch(0.48 0.04 50);
+  --accent: oklch(0.68 0.13 55);
+  --accent-strong: oklch(0.68 0.13 55); /* links and accent buttons use the original terracotta */
+  --accent-foreground: oklch(0.98 0.01 80);
+  --destructive: oklch(0.55 0.18 28);
   --border: oklch(0.85 0.03 70);
-  --input: oklch(0.86 0.025 70);
+  --input: oklch(0.88 0.025 70);
   --ring: oklch(0.6 0.1 50);
-  --success: oklch(0.47 0.12 145);
-  --warning: oklch(0.52 0.12 70);
-  --info: oklch(0.48 0.09 240);
+  --success: oklch(0.55 0.12 145);
+  --warning: oklch(0.7 0.14 75);
+  --info: oklch(0.55 0.08 240);
   --dots: oklch(0.85 0.04 70 / 0.35);
   color-scheme: light;
 }
 
+/* Dark mode: the warm dark palette from the rebuild. */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: oklch(0.19 0.015 40);
