@@ -1,10 +1,17 @@
-import { similarBooks } from "../server/similar.js";
+import { aiConfig } from "../server/ai.js";
+import { similarBooks, type SimilarResult } from "../server/similar.js";
+import { similarFree } from "../server/openlibrary.js";
 import { cacheGet, cacheSet, overLimit } from "../server/cache.js";
 import { HttpError, clientIp, handle, json, readJson } from "../server/http.js";
 
+type Answer = SimilarResult & { source: "ai" | "openlibrary" };
+
 // POST /api/similar  { seed: { title, author }, shelf: [{ title, author }] }
-// Returns { onList: [{ index, reason }], newBooks: [{ title, author, reason }] }, where index points into shelf.
-// Same limits as recommendations: 10 per visitor per 10 minutes, 300 per hour site-wide. Answers are cached for a week.
+// Returns { onList: [{ index, reason }], newBooks: [{ title, author, reason }], source }, where index points into shelf.
+//
+// Uses AI when AI_PROVIDER / AI_API_KEY / AI_MODEL are set (e.g. a free Gemini or Groq key).
+// Without a key, or if the AI fails or hits its limit, it uses the free Open Library method instead.
+// Answers are cached for a week.
 export const POST = handle(async (req) => {
   const body = await readJson<{ seed?: { title?: string; author?: string }; shelf?: Array<{ title?: string; author?: string }> }>(req);
   const seed = { title: String(body.seed?.title ?? "").trim().slice(0, 200), author: String(body.seed?.author ?? "").trim().slice(0, 120) };
@@ -14,19 +21,27 @@ export const POST = handle(async (req) => {
     author: String(b?.author ?? "").slice(0, 120),
   }));
 
-  const key = `similar:v1:${await digest(JSON.stringify([seed, shelf]))}`;
-  const cached = await cacheGet(key);
+  const useAi = aiConfig() !== null;
+  const key = `similar:v2:${useAi ? "ai" : "ol"}:${await digest(JSON.stringify([seed, shelf]))}`;
+  const cached = await cacheGet<Answer>(key);
   if (cached) return json(cached);
 
-  if (await overLimit(`sim:${clientIp(req)}`, 10, 600)) {
+  if (await overLimit(`sim:${clientIp(req)}`, 15, 600)) {
     throw new HttpError("You've asked for a lot of recommendations. Try again in a few minutes.", 429);
   }
-  if (await overLimit("sim:all", 300, 3600)) {
-    throw new HttpError("Recommendations are busy right now. Try again later.", 429);
+
+  let answer: Answer | null = null;
+  if (useAi && !(await overLimit("sim:ai:all", 300, 3600))) {
+    try {
+      answer = { ...(await similarBooks(seed, shelf)), source: "ai" };
+    } catch (e) {
+      console.warn("AI recommendations failed; using Open Library instead.", (e as Error).message);
+    }
   }
-  const result = await similarBooks(seed, shelf);
-  await cacheSet(key, result, 7 * 24 * 3600);
-  return json(result);
+  if (!answer) answer = { ...(await similarFree(seed, shelf)), source: "openlibrary" };
+  // A fallback answer is cached briefly, so the AI is tried again soon.
+  await cacheSet(key, answer, answer.source === "ai" || !useAi ? 7 * 24 * 3600 : 3600);
+  return json(answer);
 });
 
 async function digest(s: string) {

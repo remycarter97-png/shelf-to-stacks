@@ -47,7 +47,9 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 
 ## Turning on AI recommendations
 
-Turns on **More like this** on every book (similar books already on your list first, then new ones) and **Books you might want to add**.
+**More like this** works with no setup: without an AI key it uses Open Library (free) to match books by shared subjects and authors. Adding a key makes its picks smarter and turns on **Books you might want to add**. If the AI fails or hits a free-tier limit, More like this falls back to Open Library automatically.
+
+Free AI options (no credit card at the time of writing): Google Gemini via AI Studio (`AI_PROVIDER=openai`, `AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`, a free Flash model) or Groq (`AI_PROVIDER=openai`, `AI_BASE_URL=https://api.groq.com/openai/v1`, a free chat model).
 
 The section stays hidden until three variables are set in Vercel (then redeploy):
 

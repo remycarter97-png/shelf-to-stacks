@@ -37,7 +37,11 @@ export const api = {
     call<{ recommendations: Recommendation[] }>("/api/recommend", post({ books })),
   config: () => call<AppConfig>("/api/config"),
   similar: (seed: { title: string; author: string }, shelf: Array<{ title: string; author: string }>) =>
-    call<{ onList: Array<{ index: number; reason: string }>; newBooks: Array<{ title: string; author: string; reason: string }> }>(
+    call<{
+      onList: Array<{ index: number; reason: string }>;
+      newBooks: Array<{ title: string; author: string; reason: string }>;
+      source: "ai" | "openlibrary";
+    }>(
       "/api/similar",
       post({ seed, shelf }),
     ),

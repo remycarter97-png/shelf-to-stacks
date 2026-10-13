@@ -28,7 +28,7 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
   const [open, setOpen] = useState(false);
   const others = shelf.books.filter((b) => b.id !== book.id);
   const q = useQuery({
-    queryKey: ["similar", book.title, book.author, others.length],
+    queryKey: ["similar", book.title, book.author, others.length, shelf.aiEnabled],
     queryFn: () => api.similar({ title: book.title, author: book.author }, others.map((b) => ({ title: b.title, author: b.author }))),
     enabled: open && navigator.onLine,
     staleTime: Infinity,
@@ -47,7 +47,6 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
     })),
   });
 
-  if (!shelf.aiEnabled) return null;
   const L = library.short;
   const link = "font-medium text-link underline-offset-2 hover:underline";
 
@@ -133,7 +132,11 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
                   })}
                 </ol>
               )}
-              <p className="mt-4 text-xs text-muted-foreground">Suggestions are made by AI and can be imperfect.</p>
+              <p className="mt-4 text-xs text-muted-foreground">
+                {q.data.source === "ai"
+                  ? "Suggestions are made by AI and can be imperfect."
+                  : "Matched on shared subjects and authors from Open Library, a free book database."}
+              </p>
             </>
           )}
         </div>
