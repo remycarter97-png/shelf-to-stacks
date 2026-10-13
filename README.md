@@ -10,7 +10,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
-- **Book club page** (`/club`): add each member's public Goodreads profile, StoryGraph export or Goodreads export. The app lists the books on the most members' lists (matching editions by title, author and ISBN), shows library availability, and starts a ranked vote with the picks you choose. Members are saved on the device only.
+- **Book club page** (`/club`): add each member's public Goodreads profile, StoryGraph export or Goodreads export. The app lists the books on the most members' lists (matching editions by title, author and ISBN), shows library availability, and starts a ranked vote with the picks you choose. Clubs are saved on the device; turn on **Sync across devices** to save them online under a private 16-character sync code and enter that code on other devices.
 - **Book club vote**: shortlist books, create a voting link, share it. Members rank their top 3; the winner is decided by instant-runoff (ranked-choice) counting, with the round-by-round count shown. One ballot per device (voting again updates it).
 - **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
 - **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).
@@ -21,7 +21,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 ### 1. Book club database (Supabase, free)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting).
+2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) and `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices).
 3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Deploy (Vercel, free)

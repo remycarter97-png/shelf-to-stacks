@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findCommonBooks, type ClubMember } from "../../shared/clubMatch";
 import { importLibraryCsv } from "../../shared/importCsv";
 import { bookKey, type Book } from "../../shared/types";
@@ -10,6 +10,7 @@ import { load, save } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { timeAgo } from "../lib/format";
 import { useAvailability } from "../lib/useAvailability";
+import { formatCode, useClubSync } from "../lib/clubSync";
 import { Logo } from "./Logo";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
@@ -58,6 +59,12 @@ export function ClubPage() {
     const all = loadClubs();
     return all.some((c) => c.id === id) ? id : all[0].id;
   });
+  // Synced copies replace the list; never let it end up empty.
+  const replaceClubs = useCallback(
+    (next: Club[]) => setClubs(next.length ? next : [{ id: newId(), name: "My book club", members: [] }]),
+    [],
+  );
+  const sync = useClubSync(clubs, replaceClubs);
   const club = clubs.find((c) => c.id === activeId) ?? clubs[0];
   const members = club.members;
   const setMembers = (fn: (list: Member[]) => Member[]) =>
@@ -193,6 +200,8 @@ export function ClubPage() {
             </button>
           </div>
         </section>
+
+        {sync.available && <SyncPanel sync={sync} />}
 
         <section className="mt-8" aria-labelledby="members-heading">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -567,5 +576,144 @@ function AddMember({ onAdd, count }: { onAdd: (m: Member) => void; count: number
         )}
       </div>
     </div>
+  );
+}
+
+function SyncPanel({ sync }: { sync: ReturnType<typeof useClubSync> }) {
+  const [open, setOpen] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await fn();
+      setEntering(false);
+      setCode("");
+      setOpen(true);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const label =
+    sync.status === "off"
+      ? "Off · clubs are saved on this device only"
+      : sync.status === "saving"
+        ? "Saving…"
+        : sync.status === "offline"
+          ? "Offline · changes will sync when you're back online"
+          : sync.status === "error"
+            ? "Couldn't sync"
+            : "On · synced";
+
+  return (
+    <section className="mt-3 rounded-lg border border-border/70 bg-card p-3 text-sm" aria-label="Sync across devices">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p>
+          <span className="font-medium">Sync across devices: </span>
+          <span className={cx(sync.status === "error" ? "text-destructive" : "text-muted-foreground")}>{label}</span>
+        </p>
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 font-medium text-link underline underline-offset-2">
+          {sync.code ? (open ? "Hide" : "Sync code") : open ? "Hide" : "Set up"}
+        </button>
+      </div>
+      {sync.message && <p className="mt-1 text-destructive">{sync.message}</p>}
+
+      {open && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          {sync.code ? (
+            <>
+              <p className="text-muted-foreground">Enter this code on your other phone, tablet or computer to see the same clubs there.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <code className="rounded-md bg-muted px-3 py-2 font-mono text-base tracking-wider">{formatCode(sync.code)}</code>
+                <Button
+                  variant="outline"
+                  className="min-h-10 px-3"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(formatCode(sync.code!));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch {
+                      /* clipboard blocked */
+                    }
+                  }}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Treat it like a password: anyone with the code can see and change these clubs. Share it only with people who
+                help run your clubs.
+              </p>
+              <button
+                type="button"
+                className="mt-2 py-1 text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                onClick={() => {
+                  if (window.confirm("Stop syncing on this device? Your clubs stay here, and the code keeps working on your other devices.")) sync.disable();
+                }}
+              >
+                Turn off sync on this device
+              </button>
+            </>
+          ) : entering ? (
+            <form
+              className="flex flex-col gap-2 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void run(() => sync.link(code));
+              }}
+            >
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+                aria-label="Sync code from your other device"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                className="h-11 font-mono uppercase tracking-wider"
+              />
+              <Button type="submit" disabled={busy || !code.trim()} className="shrink-0">
+                {busy ? "Connecting…" : "Connect"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setEntering(false)}>
+                Cancel
+              </Button>
+            </form>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                Sync saves your clubs online under a private code, so the same clubs show up on your other devices. No account
+                needed.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button onClick={() => run(sync.enable)} disabled={busy}>
+                  {busy ? "Turning on…" : "Turn on sync"}
+                </Button>
+                <Button variant="outline" onClick={() => setEntering(true)}>
+                  I have a code
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Already using sync on another device? Tap “I have a code”. Clubs from both devices are combined.
+              </p>
+            </>
+          )}
+          {err && (
+            <p role="alert" className="mt-2 text-destructive">
+              {err}
+            </p>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
