@@ -4,6 +4,7 @@ import type { Availability, Book } from "../../shared/types";
 import { api } from "../lib/api";
 import { catalogLink, catalogLinkLabel, cleanTitle, type LibrarySystem } from "../lib/libraries";
 import { useShelf } from "../lib/shelfContext";
+import { load, save } from "../lib/storage";
 import { OutLink, cx } from "./ui";
 
 function statusText(r: Availability | undefined, L: string) {
@@ -26,10 +27,18 @@ function addLink(source: Book["source"], title: string, author: string) {
 export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySystem }) {
   const shelf = useShelf();
   const [open, setOpen] = useState(false);
+  // AI or Open Library; AI is only offered when the site has an AI key. The choice is remembered.
+  const [pref, setPref] = useState<"ai" | "openlibrary">(() => load("similar-mode", "ai"));
+  const mode = shelf.aiEnabled ? pref : "openlibrary";
+  const choose = (m: "ai" | "openlibrary") => {
+    setPref(m);
+    save("similar-mode", m);
+  };
   const others = shelf.books.filter((b) => b.id !== book.id);
   const q = useQuery({
-    queryKey: ["similar", book.title, book.author, others.length, shelf.aiEnabled],
-    queryFn: () => api.similar({ title: book.title, author: book.author }, others.map((b) => ({ title: b.title, author: b.author }))),
+    queryKey: ["similar", book.title, book.author, others.length, mode],
+    queryFn: () =>
+      api.similar({ title: book.title, author: book.author }, others.map((b) => ({ title: b.title, author: b.author })), mode),
     enabled: open && navigator.onLine,
     staleTime: Infinity,
     retry: false,
@@ -62,6 +71,30 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
       </button>
       {open && (
         <div className="mt-3 rounded-md border border-border/60 bg-muted/50 p-4 text-sm">
+          {shelf.aiEnabled && (
+            <div role="radiogroup" aria-label="Where recommendations come from" className="mb-4 inline-flex rounded-md border border-border/60 bg-card p-1 text-xs">
+              {(
+                [
+                  ["ai", "AI picks"],
+                  ["openlibrary", "Open Library"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === id}
+                  onClick={() => choose(id)}
+                  className={cx(
+                    "min-h-9 rounded px-3 font-medium",
+                    mode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {q.isLoading && <p className="text-muted-foreground">Finding books like this one…</p>}
           {!navigator.onLine && !q.data && <p className="text-muted-foreground">You're offline. Recommendations need a connection.</p>}
           {q.isError && <p className="text-destructive">{(q.error as Error).message}</p>}
@@ -135,7 +168,9 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
               <p className="mt-4 text-xs text-muted-foreground">
                 {q.data.source === "ai"
                   ? "Suggestions are made by AI and can be imperfect."
-                  : "Matched on shared subjects and authors from Open Library, a free book database."}
+                  : mode === "ai"
+                    ? "AI wasn't available just now, so these come from Open Library: matched on shared subjects and authors."
+                    : "Matched on shared subjects and authors from Open Library, a free book database."}
               </p>
             </>
           )}

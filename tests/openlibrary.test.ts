@@ -105,3 +105,24 @@ test("API: if the AI fails, it falls back to Open Library", async () => {
   );
   assert.equal((await res.json()).source, "openlibrary");
 });
+
+test("API: the reader can choose Open Library even when AI is set up", async () => {
+  process.env.AI_PROVIDER = "openai";
+  process.env.AI_API_KEY = "k";
+  process.env.AI_MODEL = "m";
+  fakeOpenLibrary();
+  const ol = globalThis.fetch;
+  let aiCalled = false;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!String(input).includes("openlibrary")) aiCalled = true;
+    return ol(input, init);
+  }) as typeof fetch;
+  const res = await similarRoute(
+    new Request("http://x/api/similar", {
+      method: "POST",
+      body: JSON.stringify({ mode: "openlibrary", seed: { title: "Piranesi", author: "Susanna Clarke" }, shelf: [{ title: "The Starless Sea", author: "Erin Morgenstern" }] }),
+    }),
+  );
+  assert.equal((await res.json()).source, "openlibrary");
+  assert.equal(aiCalled, false);
+});

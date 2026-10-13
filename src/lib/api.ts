@@ -36,13 +36,13 @@ export const api = {
   recommend: (books: Array<{ title: string; author: string }>) =>
     call<{ recommendations: Recommendation[] }>("/api/recommend", post({ books })),
   config: () => call<AppConfig>("/api/config"),
-  similar: (seed: { title: string; author: string }, shelf: Array<{ title: string; author: string }>) =>
+  similar: (seed: { title: string; author: string }, shelf: Array<{ title: string; author: string }>, mode: "ai" | "openlibrary") =>
     call<{
       onList: Array<{ index: number; reason: string }>;
       newBooks: Array<{ title: string; author: string; reason: string }>;
       source: "ai" | "openlibrary";
     }>(
       "/api/similar",
-      post({ seed, shelf }),
+      post({ seed, shelf, mode }),
     ),
 };

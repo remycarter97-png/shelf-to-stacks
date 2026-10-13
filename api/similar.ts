@@ -6,14 +6,18 @@ import { HttpError, clientIp, handle, json, readJson } from "../server/http.js";
 
 type Answer = SimilarResult & { source: "ai" | "openlibrary" };
 
-// POST /api/similar  { seed: { title, author }, shelf: [{ title, author }] }
+// POST /api/similar  { seed: { title, author }, shelf: [{ title, author }], mode?: "ai" | "openlibrary" }
 // Returns { onList: [{ index, reason }], newBooks: [{ title, author, reason }], source }, where index points into shelf.
 //
 // Uses AI when AI_PROVIDER / AI_API_KEY / AI_MODEL are set (e.g. a free Gemini or Groq key).
 // Without a key, or if the AI fails or hits its limit, it uses the free Open Library method instead.
 // Answers are cached for a week.
 export const POST = handle(async (req) => {
-  const body = await readJson<{ seed?: { title?: string; author?: string }; shelf?: Array<{ title?: string; author?: string }> }>(req);
+  const body = await readJson<{
+    seed?: { title?: string; author?: string };
+    shelf?: Array<{ title?: string; author?: string }>;
+    mode?: string;
+  }>(req);
   const seed = { title: String(body.seed?.title ?? "").trim().slice(0, 200), author: String(body.seed?.author ?? "").trim().slice(0, 120) };
   if (!seed.title) throw new HttpError("Pick a book first.");
   const shelf = (Array.isArray(body.shelf) ? body.shelf : []).slice(0, 300).map((b) => ({
@@ -21,7 +25,8 @@ export const POST = handle(async (req) => {
     author: String(b?.author ?? "").slice(0, 120),
   }));
 
-  const useAi = aiConfig() !== null;
+  // The reader can choose Open Library even when AI is available.
+  const useAi = aiConfig() !== null && body.mode !== "openlibrary";
   const key = `similar:v2:${useAi ? "ai" : "ol"}:${await digest(JSON.stringify([seed, shelf]))}`;
   const cached = await cacheGet<Answer>(key);
   if (cached) return json(cached);
