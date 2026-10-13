@@ -9,6 +9,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **Live availability** for Boston Public Library, and for any library whose catalog is on BiblioCommons ("Other library…"). Books are checked about 15 at a time instead of one by one.
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
+- **Book pages**: tap any title for its own page: cover, description, first published year, page count and subjects (from Open Library), full availability with every edition, Libby and where to buy, recommendations, and series info (which number it is, plus the other books from that series on your list, in order). Back returns to the same spot on your shelf.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
 - **Book club page** (`/club`): add each member's public Goodreads profile, StoryGraph export or Goodreads export. The app lists the books on the most members' lists (matching editions by title, author and ISBN), shows library availability, and starts a ranked vote with the picks you choose. Clubs are saved on the device; turn on **Sync across devices** to save them online under a private 16-character sync code and enter that code on other devices.
 - **Book club vote**: shortlist books, create a voting link, share it. Members rank their top 3; the winner is decided by instant-runoff (ranked-choice) counting, with the round-by-round count shown. One ballot per device (voting again updates it).
@@ -77,7 +78,7 @@ npm run build                # type-check + production build
 ```
 
 - `src/` — React app (Vite, Tailwind). `src/lib/useAvailability.ts` runs the parallel checks and saved results.
-- `api/` — one Vercel Function per file: `shelf`, `availability`, `libby`, `recommend`, `config`.
+- `api/` — one Vercel Function per file: `shelf`, `availability`, `libby`, `recommend`, `similar`, `bookinfo`, `config`.
 - `server/` — shared server logic: Goodreads RSS, BiblioCommons lookups with circuit breakers, Libby, AI providers, cache.
 - `supabase/migrations/` — book club tables and the two voting functions.
 - `npm run icons` regenerates the home-screen icons from `scripts/make-icons.mjs`.

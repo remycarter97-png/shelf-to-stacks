@@ -36,6 +36,18 @@ export const api = {
   recommend: (books: Array<{ title: string; author: string }>) =>
     call<{ recommendations: Recommendation[] }>("/api/recommend", post({ books })),
   config: () => call<AppConfig>("/api/config"),
+  bookInfo: (title: string, author: string, isbn: string) =>
+    call<{
+      found: boolean;
+      description?: string;
+      firstPublished?: number;
+      pages?: number;
+      subjects: string[];
+      coverUrl?: string;
+      openLibraryUrl?: string;
+      ratingsAverage?: number;
+      ratingsCount?: number;
+    }>(`/api/bookinfo?${new URLSearchParams({ title, author, isbn }).toString()}`),
   similar: (seed: { title: string; author: string }, shelf: Array<{ title: string; author: string }>, mode: "ai" | "openlibrary") =>
     call<{
       onList: Array<{ index: number; reason: string }>;

@@ -13,11 +13,12 @@ import { STALE_MS } from "../lib/useAvailability";
 import { MoreWays } from "./MoreWays";
 import { MoreLikeThis } from "./MoreLikeThis";
 import { OutLink, cx } from "./ui";
+import { openBook } from "../lib/router";
 
 export type CardState = { result?: Availability; checking: boolean; checkedAt?: number; failedAt?: number };
 
 // Labels separate "the library owns it" from "a copy is on the shelf right now".
-const STATUS: Record<Status | "checking" | "waiting" | "link", { label: string; dot: string }> = {
+export const STATUS: Record<Status | "checking" | "waiting" | "link", { label: string; dot: string }> = {
   checking: { label: "Checking…", dot: "bg-muted-foreground/50 animate-pulse" },
   waiting: { label: "Not checked yet", dot: "bg-muted-foreground/40" },
   available: { label: "Available now", dot: "bg-success" },
@@ -28,7 +29,7 @@ const STATUS: Record<Status | "checking" | "waiting" | "link", { label: string; 
   link: { label: "Link only", dot: "bg-muted-foreground/40" },
 };
 
-function copiesLine(r: Availability) {
+export function copiesLine(r: Availability) {
   const fmt = r.format ? prettyFormat(r.format) : "";
   if (r.status === "available") {
     return [`${r.availableCopies ?? 0} of ${r.totalCopies ?? 0} copies on the shelf`, fmt].filter(Boolean).join(" · ");
@@ -81,7 +82,16 @@ export function BookCard({
     <li className="flex min-w-0 gap-4 rounded-lg border border-border/70 bg-card p-4 sm:gap-5 sm:p-5">
       <Cover src={book.imageUrl} />
       <div className="min-w-0 flex-1">
-        <h3 className="font-display text-lg font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">{main}</h3>
+        <h3 className="font-display text-lg font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">
+          <button
+            type="button"
+            onClick={() => openBook(book.id)}
+            className="text-left underline-offset-4 hover:underline focus-visible:underline"
+            aria-label={`${main}: open book details`}
+          >
+            {main}
+          </button>
+        </h3>
         {series && <p className="mt-0.5 truncate text-xs text-muted-foreground">{series}</p>}
         {book.author && <p className="mt-0.5 text-sm text-muted-foreground">by {book.author}</p>}
 
@@ -193,8 +203,20 @@ function editionStatus(e: Edition) {
 }
 
 /** Every edition the library has: format, year, ISBN and its own availability. */
-function Editions({ editions, shelfIsbn, exact, library }: { editions: Edition[]; shelfIsbn: string; exact: boolean; library: LibrarySystem }) {
-  const [open, setOpen] = useState(false);
+export function Editions({
+  editions,
+  shelfIsbn,
+  exact,
+  library,
+  defaultOpen = false,
+}: {
+  editions: Edition[];
+  shelfIsbn: string;
+  exact: boolean;
+  library: LibrarySystem;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   const others = editions.length - 1;
   const formats = [...new Set(editions.map((e) => prettyFormat(e.format)).filter(Boolean))];
   return (
@@ -253,7 +275,7 @@ function Editions({ editions, shelfIsbn, exact, library }: { editions: Edition[]
 }
 
 /** Book cover, or a plain placeholder when there is none or it fails to load. */
-function Cover({ src }: { src: string }) {
+export function Cover({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) return <div className="h-24 w-16 flex-shrink-0 rounded-sm bg-muted" aria-hidden />;
   return (

@@ -29,7 +29,7 @@ function storageKey(lib: LibrarySystem) {
   return `results:v2:${lib.id}:${lib.biblioCode ?? ""}`;
 }
 
-function loadSaved(lib: LibrarySystem): Saved {
+export function loadSaved(lib: LibrarySystem): Saved {
   const saved = load<Saved>(storageKey(lib), {});
   const now = Date.now();
   for (const k of Object.keys(saved)) if (now - saved[k].at > KEEP_MS) delete saved[k];
@@ -44,7 +44,8 @@ export function useAvailability(books: Book[], lib: LibrarySystem) {
 
   const persist = useCallback(
     (map: Map<string, Entry>) => {
-      const out: Saved = {};
+      // Merge into what's saved, so checking one book (e.g. on its own page) never drops the rest of the shelf.
+      const out: Saved = loadSaved(lib);
       for (const [k, v] of map) if (v.result.status !== "error") out[k] = v;
       save(storageKey(lib), out);
     },

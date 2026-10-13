@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { bookKey, type Book, type Status } from "../../shared/types";
 import type { LibrarySystem } from "../lib/libraries";
 import { prettyFormat, timeAgo } from "../lib/format";
@@ -58,11 +58,34 @@ export function ShelfResults({
     const n = load("page-size", 10);
     return (PAGE_SIZES as readonly number[]).includes(n) ? n : 10;
   });
-  const [page, setPage] = useState(1);
+  // The current page is kept for this visit, so returning from a book page lands on the same page.
+  const [page, setPageState] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem("shelf-to-stacks:shelf-page")) || 1;
+    } catch {
+      return 1;
+    }
+  });
+  const setPage = (p: number) => {
+    setPageState(p);
+    try {
+      sessionStorage.setItem("shelf-to-stacks:shelf-page", String(p));
+    } catch {
+      /* ignore */
+    }
+  };
+  const firstRender = useRef(true);
   const L = library.short;
 
   // A new search, filter or sort starts back on page 1.
-  useEffect(() => setPage(1), [filter, sort, format, query, books]);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, sort, format, query, books]);
 
   const rows = useMemo(
     () =>

@@ -10,13 +10,15 @@ export function MoreWays({
   author,
   isbn,
   library,
+  defaultOpen = false,
 }: {
   title: string;
   author: string;
   isbn?: string;
   library: LibrarySystem;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const libbyKey = library.libbyKey;
   const libby = useQuery({
     queryKey: ["libby", libbyKey, title, author],
@@ -58,7 +60,7 @@ export function MoreWays({
                   <span className="font-medium">{it.type === "audiobook" ? "Audiobook" : "eBook"}: </span>
                   {it.available ? (
                     <span className="text-success">
-                      Available now ({it.availableCopies} of {it.ownedCopies})
+                      Available now{it.ownedCopies ? ` (${it.availableCopies} of ${it.ownedCopies})` : ""}
                     </span>
                   ) : (
                     <span className="text-muted-foreground">

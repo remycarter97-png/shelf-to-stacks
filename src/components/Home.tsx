@@ -15,7 +15,7 @@ import { BookClubPanel, type ClubPick } from "./BookClubPanel";
 import { Logo } from "./Logo";
 import { Recommendations } from "./Recommendations";
 import { InstallLink } from "./InstallPrompt";
-import { navigate } from "../lib/router";
+import { navigate, takeShelfScroll } from "../lib/router";
 import { ShelfResults } from "./ShelfResults";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
@@ -41,6 +41,16 @@ export function Home() {
   );
 
   useEffect(() => save("club-picks", picks), [picks]);
+
+  // Coming back from a book page: return to the same spot on the shelf.
+  useEffect(() => {
+    const y = takeShelfScroll();
+    if (y == null) return;
+    const go = () => window.scrollTo(0, y);
+    requestAnimationFrame(go);
+    const t = setTimeout(go, 250);
+    return () => clearTimeout(t);
+  }, []);
 
   const fetchShelf = useMutation({
     mutationFn: (args: { id: string; refresh?: boolean }) => api.shelf(args.id, args.refresh),

@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { catalogLink, catalogLinkLabel, cleanTitle, type LibrarySystem } from "../lib/libraries";
 import { useShelf } from "../lib/shelfContext";
 import { load, save } from "../lib/storage";
+import { openBook } from "../lib/router";
 import { OutLink, cx } from "./ui";
 
 function statusText(r: Availability | undefined, L: string) {
@@ -24,9 +25,9 @@ function addLink(source: Book["source"], title: string, author: string) {
 }
 
 /** "More like this": similar books already on the reader's list first, then new ones. */
-export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySystem }) {
+export function MoreLikeThis({ book, library, defaultOpen = false }: { book: Book; library: LibrarySystem; defaultOpen?: boolean }) {
   const shelf = useShelf();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   // AI or Open Library; AI is only offered when the site has an AI key. The choice is remembered.
   const [pref, setPref] = useState<"ai" | "openlibrary">(() => load("similar-mode", "ai"));
   const mode = shelf.aiEnabled ? pref : "openlibrary";
@@ -113,7 +114,9 @@ export function MoreLikeThis({ book, library }: { book: Book; library: LibrarySy
                     return (
                       <li key={b.id} className="leading-snug">
                         <p>
-                          <span className="font-medium">{cleanTitle(b.title)}</span>
+                          <button type="button" onClick={() => openBook(b.id)} className="text-left font-medium underline-offset-2 hover:underline">
+                            {cleanTitle(b.title)}
+                          </button>
                           {b.author && <span className="text-muted-foreground"> · {b.author}</span>}
                         </p>
                         {reason && <p className="italic text-foreground/80">{reason}</p>}
