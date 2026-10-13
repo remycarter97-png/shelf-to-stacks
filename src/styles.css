@@ -80,6 +80,8 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    /* Safety net: nothing may make the page wider than the screen (Safari zooms out if it does). */
+    overflow-x: clip;
   }
   body {
     background-color: var(--color-background);

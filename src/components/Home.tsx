@@ -72,7 +72,7 @@ export function Home() {
         </div>
       </header>
 
-      <main className="safe-x mx-auto max-w-6xl pb-28">
+      <main className="safe-x mx-auto max-w-6xl pb-12">
         <section className="pt-10 sm:pt-14">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Goodreads × {library.name}</p>
           <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] md:text-6xl">
@@ -177,8 +177,10 @@ export function Home() {
         <About />
       </main>
 
-      <footer className="safe-bottom border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
-        Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads.
+      <footer className="safe-bottom border-t border-border/60">
+        <p className="safe-x mx-auto max-w-6xl py-8 text-sm leading-relaxed text-muted-foreground">
+          Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads.
+        </p>
       </footer>
     </div>
   );
@@ -263,7 +265,7 @@ function HelpHint() {
 
 function About() {
   return (
-    <section id="about" className="mt-16 max-w-2xl border-t border-border/60 pt-10 text-sm leading-relaxed text-muted-foreground">
+    <section id="about" className="mt-16 border-t border-border/60 pt-10 text-sm leading-relaxed text-muted-foreground">
       <h2 className="font-display text-xl text-foreground">How it works</h2>
       <p className="mt-2">
         We read your public Goodreads Want to Read shelf, then look each book up in your library's catalog. Boston Public

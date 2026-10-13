@@ -51,11 +51,11 @@ export function Recommendations({ books, library }: { books: Book[]; library: Li
         </p>
       )}
       {list.length > 0 && (
-        <ul className="mt-6 grid gap-3">
+        <ul className="mt-6 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map((r, i) => {
             const a = checks[i]?.data;
             return (
-              <li key={`${r.title}-${i}`} className="rounded-lg border border-border/70 bg-card p-4 sm:p-5">
+              <li key={`${r.title}-${i}`} className="min-w-0 rounded-lg border border-border/70 bg-card p-4 sm:p-5">
                 <h3 className="font-display text-lg font-medium leading-snug [overflow-wrap:anywhere]">{r.title}</h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">by {r.author}</p>
                 <p className="mt-2 text-sm italic leading-relaxed text-foreground/85">“{r.reason}”</p>
