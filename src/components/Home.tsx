@@ -181,13 +181,6 @@ export function Home() {
               {fetchShelf.isPending ? "Loading shelf…" : library ? "Check the catalog" : "Choose a library first"}
             </Button>
           </form>
-          <p className="mt-2 max-w-2xl text-sm leading-snug text-muted-foreground">
-            <b className="font-medium text-foreground">Your Goodreads profile must be public.</b> Goodreads closed its public
-            API, so we can only read public Want to Read shelves.{" "}
-            <button type="button" onClick={() => switchMode("file")} className="text-link underline underline-offset-2">
-              Private profile? Upload your Goodreads export
-            </button>
-          </p>
           </>
           ) : (
             <div className="mt-4 max-w-2xl">
@@ -321,7 +314,12 @@ export function Home() {
           </p>
         )}
 
-        <About />
+        <About
+          onUpload={() => {
+            switchMode("file");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
       </main>
 
       <footer className="safe-bottom border-t border-border/60">
@@ -521,7 +519,7 @@ function HelpHint() {
   );
 }
 
-function About() {
+function About({ onUpload }: { onUpload: () => void }) {
   return (
     <section id="about" className="mt-16 border-t border-border/60 pt-10 text-sm leading-relaxed text-muted-foreground">
       <h2 className="font-display text-xl text-foreground">How it works</h2>
@@ -551,6 +549,13 @@ function About() {
         <PhoneIcon />
         Add Shelf to Stacks to your home screen
       </InstallLink>
+      <p className="mt-8 border-t border-border/60 pt-6">
+        <b className="font-medium text-foreground">Goodreads profiles must be public.</b> Goodreads closed its public API,
+        so we can only read public Want to Read shelves.{" "}
+        <button type="button" onClick={onUpload} className="text-link underline underline-offset-2">
+          Private profile? Upload your Goodreads export
+        </button>
+      </p>
     </section>
   );
 }
