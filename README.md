@@ -1,10 +1,11 @@
 # Shelf to Stacks
 
-Your Goodreads want-to-read shelf, checked against your public library's catalog. Works on desktop and phones, and installs to the home screen on iPhone and Android like an app.
+Your Goodreads or StoryGraph want-to-read list, checked against your public library's catalog. Works on desktop and phones, and installs to the home screen on iPhone and Android like an app.
 
 ## What's in it
 
 - **Shelf check**: paste a Goodreads user ID or profile link; the whole Want to Read shelf loads (up to 1,000 books).
+- **StoryGraph**: upload your StoryGraph library export (CSV) and the app uses the books marked to-read. A Goodreads library export works too. The file is read on the device and never uploaded. Covers come from Open Library by ISBN.
 - **Live availability** for Boston Public Library, and for any library whose catalog is on BiblioCommons ("Other library…"). Books are checked about 15 at a time instead of one by one.
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.

@@ -6,7 +6,10 @@ export type Book = {
   author: string;
   isbn: string;
   imageUrl: string;
+  /** Link to the book on the site it came from (Goodreads or StoryGraph). */
   goodreadsUrl: string;
+  /** Where the book came from; defaults to Goodreads. */
+  source?: "goodreads" | "storygraph";
 };
 
 export type ShelfResponse = { shelfTitle: string; books: Book[] };

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Book } from "../../shared/types";
+import { importLibraryCsv } from "../../shared/importCsv";
 import { api } from "../lib/api";
 import {
   DEFAULT_LIBRARY,
@@ -15,9 +16,11 @@ import { BookClubPanel, type ClubPick } from "./BookClubPanel";
 import { Logo } from "./Logo";
 import { Recommendations } from "./Recommendations";
 import { ShelfResults } from "./ShelfResults";
-import { Button, Input, OutLink, Select } from "./ui";
+import { Button, Input, OutLink, Select, cx } from "./ui";
 
-type SavedShelf = { userId: string; books: Book[]; at: number };
+/** "goodreads" = live from the Goodreads feed; "file" = uploaded export (StoryGraph or Goodreads). */
+type ShelfOrigin = "goodreads" | "file";
+type SavedShelf = { userId: string; books: Book[]; at: number; origin?: ShelfOrigin; fileName?: string; fileSource?: "storygraph" | "goodreads" };
 
 export function Home() {
   const [userId, setUserId] = useState(() => load("userId", ""));
@@ -25,6 +28,9 @@ export function Home() {
   const [custom, setCustom] = useState<CustomLibraryInput>(() => load("custom-library", { name: "", catalog: "", libby: "" }));
   const [shelf, setShelf] = useState<SavedShelf | null>(() => load<SavedShelf | null>("shelf", null));
   const [picks, setPicks] = useState<ClubPick[]>(() => load("club-picks", []));
+  const [mode, setMode] = useState<ShelfOrigin>(() => load<SavedShelf | null>("shelf", null)?.origin ?? load<ShelfOrigin>("mode", "goodreads"));
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const config = useQuery({ queryKey: ["config"], queryFn: api.config, staleTime: Infinity, retry: false });
 
   const library: LibrarySystem = useMemo(
@@ -37,7 +43,7 @@ export function Home() {
   const fetchShelf = useMutation({
     mutationFn: (args: { id: string; refresh?: boolean }) => api.shelf(args.id, args.refresh),
     onSuccess: (res) => {
-      const next = { userId: res.userId, books: res.books, at: Date.now() };
+      const next: SavedShelf = { userId: res.userId, books: res.books, at: Date.now(), origin: "goodreads" };
       setShelf(next);
       save("shelf", next);
       save("userId", userId.trim());
@@ -49,11 +55,34 @@ export function Home() {
 
   // Returning visitor: show the saved shelf right away, then quietly refresh it once an hour.
   useEffect(() => {
-    if (shelf && navigator.onLine && Date.now() - shelf.at > 60 * 60_000) {
+    if (shelf && (shelf.origin ?? "goodreads") === "goodreads" && navigator.onLine && Date.now() - shelf.at > 60 * 60_000) {
       fetchShelf.mutate({ id: shelf.userId, refresh: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setFileError(null);
+    try {
+      if (file.size > 20_000_000) throw new Error("That file is too large to be a library export.");
+      const res = importLibraryCsv(await file.text());
+      const next: SavedShelf = { userId: "", books: res.books, at: Date.now(), origin: "file", fileName: file.name, fileSource: res.source };
+      setShelf(next);
+      save("shelf", next);
+      requestPersistentStorage();
+      setTimeout(() => document.getElementById("results-heading")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    } catch (e) {
+      setFileError((e as Error).message);
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
+
+  const switchMode = (m: ShelfOrigin) => {
+    setMode(m);
+    save("mode", m);
+  };
 
   const togglePick = (p: ClubPick) =>
     setPicks((prev) => (prev.some((x) => x.id === p.id) ? prev.filter((x) => x.id !== p.id) : [...prev, p]));
@@ -74,19 +103,45 @@ export function Home() {
 
       <main className="safe-x mx-auto max-w-6xl pb-12">
         <section className="pt-10 sm:pt-14">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Goodreads × {library.name}</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {mode === "file" ? "StoryGraph" : "Goodreads"} × {library.name}
+          </p>
           <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] md:text-6xl">
             From your shelf
             <br />
             <span className="italic text-accent">to the stacks.</span>
           </h1>
           <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-            Drop in your Goodreads user ID and we'll walk your want-to-read shelf against your library's catalog — no
+            Bring your Goodreads or StoryGraph want-to-read list and we'll walk it against your library's catalog — no
             more searching one book at a time.
           </p>
 
+          <div role="tablist" aria-label="Where your list comes from" className="mt-7 inline-flex rounded-md border border-border/60 bg-card p-1 text-sm">
+            {(
+              [
+                ["goodreads", "Goodreads"],
+                ["file", "StoryGraph"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={mode === id}
+                onClick={() => switchMode(id)}
+                className={cx(
+                  "min-h-10 rounded px-4 font-medium transition-colors",
+                  mode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {mode === "goodreads" ? (
           <form
-            className="mt-7 flex max-w-2xl flex-col gap-3 sm:flex-row"
+            className="mt-4 flex max-w-2xl flex-col gap-3 sm:flex-row"
             onSubmit={(e) => {
               e.preventDefault();
               if (userId.trim()) fetchShelf.mutate({ id: userId.trim(), refresh: !!sameUser });
@@ -106,6 +161,30 @@ export function Home() {
               {fetchShelf.isPending ? "Loading shelf…" : "Check the catalog"}
             </Button>
           </form>
+          ) : (
+            <div className="mt-4 max-w-2xl">
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                id="library-file"
+                onChange={(e) => onFile(e.target.files?.[0])}
+              />
+              <label
+                htmlFor="library-file"
+                className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto sm:inline-flex"
+              >
+                Upload your StoryGraph export (.csv)
+              </label>
+              <StoryGraphHelp />
+              {fileError && (
+                <p role="alert" className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {fileError}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mt-4 flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-2 text-sm">
             <label htmlFor="library" className="text-muted-foreground">
@@ -140,14 +219,14 @@ export function Home() {
             />
           )}
 
-          <HelpHint />
+          {mode === "goodreads" && <HelpHint />}
 
           {fetchShelf.isError && (
             <p role="alert" className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {(fetchShelf.error as Error).message}
             </p>
           )}
-          {shelf && !fetchShelf.isPending && (
+          {shelf && !fetchShelf.isPending && (shelf.origin ?? "goodreads") === "goodreads" && (
             <p className="mt-3 text-xs text-muted-foreground">
               Shelf loaded {timeAgo(shelf.at)}.{" "}
               <button
@@ -157,6 +236,15 @@ export function Home() {
               >
                 Reload from Goodreads
               </button>
+            </p>
+          )}
+          {shelf && shelf.origin === "file" && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {shelf.fileSource === "goodreads" ? "Goodreads" : "StoryGraph"} list uploaded {timeAgo(shelf.at)}
+              {shelf.fileName ? ` (${shelf.fileName})` : ""}.{" "}
+              <label htmlFor="library-file" className="cursor-pointer underline underline-offset-2 hover:text-foreground" onClick={() => switchMode("file")}>
+                Upload a newer export
+              </label>
             </p>
           )}
         </section>
@@ -170,7 +258,9 @@ export function Home() {
         )}
         {shelf && books.length === 0 && (
           <p className="mt-8 italic text-muted-foreground">
-            That shelf came back empty. Check that your Goodreads profile and Want to Read shelf are public.
+            {shelf.origin === "file"
+              ? "That export has no books marked to-read."
+              : "That shelf came back empty. Check that your Goodreads profile and Want to Read shelf are public."}
           </p>
         )}
 
@@ -179,7 +269,7 @@ export function Home() {
 
       <footer className="safe-bottom border-t border-border/60">
         <p className="safe-x mx-auto max-w-6xl py-8 text-sm leading-relaxed text-muted-foreground">
-          Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads.
+          Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads or your StoryGraph export.
         </p>
       </footer>
     </div>
@@ -238,6 +328,38 @@ function CustomLibraryForm({
   );
 }
 
+function StoryGraphHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 text-sm text-muted-foreground">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 underline underline-offset-2 hover:text-foreground">
+        How do I get my StoryGraph export?
+      </button>
+      {open && (
+        <div className="mt-2 rounded-md border border-border/60 bg-card p-3 leading-relaxed">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              On{" "}
+              <OutLink href="https://app.thestorygraph.com/" className="underline">
+                app.thestorygraph.com
+              </OutLink>
+              , tap your profile picture, then <b>Manage Account</b>.
+            </li>
+            <li>
+              Scroll to <b>Manage Your Data</b> and tap <b>Export StoryGraph Library</b>, then <b>Generate export</b>.
+            </li>
+            <li>Download the CSV file when it's ready, then upload it here.</li>
+          </ol>
+          <p className="mt-2">
+            We use the books marked <em>to-read</em>. The file stays on your device. A Goodreads library export (CSV) works
+            here too.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HelpHint() {
   const [open, setOpen] = useState(false);
   return (
@@ -268,7 +390,8 @@ function About() {
     <section id="about" className="mt-16 border-t border-border/60 pt-10 text-sm leading-relaxed text-muted-foreground">
       <h2 className="font-display text-xl text-foreground">How it works</h2>
       <p className="mt-2">
-        We read your public Goodreads Want to Read shelf, then look each book up in your library's catalog. Boston Public
+        We read your public Goodreads Want to Read shelf (or the to-read books in a StoryGraph export), then look each
+        book up in your library's catalog. Boston Public
         Library (and any library on BiblioCommons) gets live availability; Minuteman libraries get a direct catalog link
         for each book.
       </p>

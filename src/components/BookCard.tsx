@@ -3,6 +3,7 @@ import { catalogLink, catalogLinkLabel, splitSeries, type LibrarySystem } from "
 import { prettyFormat } from "../lib/format";
 import { MoreWays } from "./MoreWays";
 import { OutLink, cx } from "./ui";
+import { useState } from "react";
 
 export type CardState = { result?: Availability; checking: boolean; checkedAt?: number };
 
@@ -44,16 +45,7 @@ export function BookCard({
 
   return (
     <li className="flex min-w-0 gap-4 rounded-lg border border-border/70 bg-card p-4 sm:gap-5 sm:p-5">
-      {book.imageUrl ? (
-        <img
-          src={book.imageUrl}
-          alt=""
-          loading="lazy"
-          className="h-24 w-16 flex-shrink-0 rounded-sm bg-muted object-cover shadow-md"
-        />
-      ) : (
-        <div className="h-24 w-16 flex-shrink-0 rounded-sm bg-muted" aria-hidden />
-      )}
+      <Cover src={book.imageUrl} />
       <div className="min-w-0 flex-1">
         <h3 className="font-display text-lg font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">
           {main}
@@ -109,7 +101,7 @@ export function BookCard({
           )}
           {book.goodreadsUrl && (
             <OutLink href={book.goodreadsUrl} className="text-muted-foreground hover:text-foreground">
-              Goodreads ↗
+              {book.source === "storygraph" ? "StoryGraph" : "Goodreads"} ↗
             </OutLink>
           )}
           <button
@@ -127,5 +119,20 @@ export function BookCard({
         <MoreWays title={book.title} author={book.author} isbn={book.isbn} library={library} />
       </div>
     </li>
+  );
+}
+
+/** Book cover, or a plain placeholder when there is none or it fails to load. */
+function Cover({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <div className="h-24 w-16 flex-shrink-0 rounded-sm bg-muted" aria-hidden />;
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-24 w-16 flex-shrink-0 rounded-sm bg-muted object-cover shadow-md"
+    />
   );
 }
