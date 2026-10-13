@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { bookKey, type Book, type Status } from "../../shared/types";
 import type { LibrarySystem } from "../lib/libraries";
 import { prettyFormat, timeAgo } from "../lib/format";
 import { useAvailability } from "../lib/useAvailability";
+import { load, save } from "../lib/storage";
+import { PAGE_SIZES, Pagination } from "./Pagination";
 import { BookCard } from "./BookCard";
 import { Button, Input, Select, cx } from "./ui";
 import type { ClubPick } from "./BookClubPanel";
@@ -35,7 +37,15 @@ export function ShelfResults({
   const [sort, setSort] = useState<Sort>("shelf");
   const [format, setFormat] = useState("all");
   const [query, setQuery] = useState("");
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const n = load("page-size", 10);
+    return (PAGE_SIZES as readonly number[]).includes(n) ? n : 10;
+  });
+  const [page, setPage] = useState(1);
   const L = library.short;
+
+  // A new search, filter or sort starts back on page 1.
+  useEffect(() => setPage(1), [filter, sort, format, query, books]);
 
   const rows = useMemo(
     () =>
@@ -85,6 +95,28 @@ export function ShelfResults({
           : String(RANK[r.result?.status ?? "checking"]) + r.book.title.toLowerCase();
     return [...list].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
   }, [rows, filter, format, query, sort]);
+
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(page, pages);
+  const pageRows = shown.slice((current - 1) * pageSize, current * pageSize);
+  const goTo = (p: number) => {
+    setPage(p);
+    document.getElementById("results-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const pager = {
+    page: current,
+    pages,
+    total: shown.length,
+    pageSize,
+    onPage: goTo,
+    onPageSize: (n: number) => {
+      // Keep the first book on screen in view after changing the page size.
+      const firstIndex = (current - 1) * pageSize;
+      setPageSize(n);
+      save("page-size", n);
+      setPage(Math.floor(firstIndex / n) + 1);
+    },
+  };
 
   const checking = rows.filter((r) => r.checking).length;
   const done = books.length - checking;
@@ -206,8 +238,14 @@ export function ShelfResults({
         </div>
       )}
 
-      <ul className="mt-5 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((r) => (
+      {shown.length > 0 && (
+        <div className="mt-5">
+          <Pagination label="Pages, top" {...pager} />
+        </div>
+      )}
+
+      <ul className="mt-4 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {pageRows.map((r) => (
           <BookCard
             key={r.book.id}
             book={r.book}
@@ -222,6 +260,11 @@ export function ShelfResults({
         ))}
       </ul>
       {shown.length === 0 && <p className="mt-6 italic text-muted-foreground">No books match.</p>}
+      {shown.length > pageSize && (
+        <div className="mt-6">
+          <Pagination label="Pages, bottom" {...pager} />
+        </div>
+      )}
     </section>
   );
 }
