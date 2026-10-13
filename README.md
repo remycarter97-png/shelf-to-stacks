@@ -10,6 +10,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
+- **Book club page** (`/club`): add each member's public Goodreads profile, StoryGraph export or Goodreads export. The app lists the books on the most members' lists (matching editions by title, author and ISBN), shows library availability, and starts a ranked vote with the picks you choose. Members are saved on the device only.
 - **Book club vote**: shortlist books, create a voting link, share it. Members rank their top 3; the winner is decided by instant-runoff (ranked-choice) counting, with the round-by-round count shown. One ballot per device (voting again updates it).
 - **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
 - **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).

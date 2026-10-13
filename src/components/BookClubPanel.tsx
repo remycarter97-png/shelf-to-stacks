@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { navigate } from "../lib/router";
-import { load, save } from "../lib/storage";
+import { createVote } from "../lib/club";
 import { Button, Input } from "./ui";
 
 export type ClubPick = { id: string; title: string; author: string; imageUrl: string };
@@ -17,16 +17,9 @@ export function BookClubPanel({ picks, onRemove }: { picks: ClubPick[]; onRemove
     setBusy(true);
     setErr(null);
     try {
-      const { data, error } = await supabase!.rpc("create_poll", {
-        p_title: title.trim() || "Book club vote",
-        p_options: picks.map((p) => ({ title: p.title, author: p.author, image_url: p.imageUrl })),
-      });
-      if (error) throw error;
-      // Remember polls made on this device, so their creator gets a "Back to my shelf" link.
-      save("my-polls", [...load<string[]>("my-polls", []), data as string].slice(-50));
-      navigate(`/vote/${data as string}`);
-    } catch {
-      setErr("Couldn't create the vote. Check your connection and try again.");
+      await createVote(title, picks);
+    } catch (e) {
+      setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -38,6 +31,11 @@ export function BookClubPanel({ picks, onRemove }: { picks: ClubPick[]; onRemove
       <h2 id="club-heading" className="mt-2 font-display text-2xl">
         Help your club decide
       </h2>
+      <p className="mt-2 text-sm">
+        <button type="button" onClick={() => navigate("/club")} className="font-medium text-link underline underline-offset-2">
+          Compare everyone's lists to find books in common →
+        </button>
+      </p>
       {picks.length === 0 ? (
         <p className="mt-3 italic text-muted-foreground">
           Tap “+ Book club shortlist” on two or more books above, then create a voting link to share with your club. Everyone ranks their top 3, and the winner is decided by ranked-choice count.

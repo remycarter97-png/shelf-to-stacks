@@ -15,6 +15,7 @@ import { BookClubPanel, type ClubPick } from "./BookClubPanel";
 import { Logo } from "./Logo";
 import { Recommendations } from "./Recommendations";
 import { InstallLink } from "./InstallPrompt";
+import { navigate } from "../lib/router";
 import { ShelfResults } from "./ShelfResults";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
@@ -101,6 +102,9 @@ export function Home() {
               <PhoneIcon />
               Get the app
             </InstallLink>
+            <button type="button" onClick={() => navigate("/club")} className="hidden whitespace-nowrap py-2 text-muted-foreground hover:text-foreground sm:inline">
+              Book club
+            </button>
             <a href="#about" className="hidden whitespace-nowrap py-2 text-muted-foreground hover:text-foreground sm:inline">
               How it works
             </a>
@@ -147,6 +151,12 @@ export function Home() {
           </div>
 
           <ImportOptions onUpload={() => switchMode("file")} />
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choosing for a book club?{" "}
+            <button type="button" onClick={() => navigate("/club")} className="font-medium text-link underline underline-offset-2">
+              Compare members' lists
+            </button>
+          </p>
 
           {mode === "goodreads" ? (
           <>
