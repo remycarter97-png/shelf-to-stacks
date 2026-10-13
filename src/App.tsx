@@ -1,5 +1,5 @@
 import { Home } from "./components/Home";
-import { InstallPrompt, OfflineBanner } from "./components/InstallPrompt";
+import { InstallHelp, InstallPrompt, OfflineBanner } from "./components/InstallPrompt";
 import { VotePage } from "./components/VotePage";
 import { usePath } from "./lib/router";
 
@@ -11,6 +11,7 @@ export function App() {
       <OfflineBanner />
       {vote ? <VotePage pollId={vote[1]} /> : <Home />}
       {!vote && <InstallPrompt />}
+      <InstallHelp />
     </>
   );
 }

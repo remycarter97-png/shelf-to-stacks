@@ -15,6 +15,7 @@ import { timeAgo } from "../lib/format";
 import { BookClubPanel, type ClubPick } from "./BookClubPanel";
 import { Logo } from "./Logo";
 import { Recommendations } from "./Recommendations";
+import { InstallLink } from "./InstallPrompt";
 import { ShelfResults } from "./ShelfResults";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
@@ -95,9 +96,15 @@ export function Home() {
       <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
         <div className="safe-x mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
           <Logo />
-          <a href="#about" className="py-2 text-sm text-muted-foreground hover:text-foreground">
-            How it works
-          </a>
+          <nav className="flex items-center gap-4 text-sm">
+            <InstallLink className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 font-medium text-foreground hover:bg-muted">
+              <PhoneIcon />
+              Get the app
+            </InstallLink>
+            <a href="#about" className="hidden whitespace-nowrap py-2 text-muted-foreground hover:text-foreground sm:inline">
+              How it works
+            </a>
+          </nav>
         </div>
       </header>
 
@@ -399,6 +406,19 @@ function About() {
         No account needed. Your Goodreads ID, library and last results are saved only on this device, so the app opens
         instantly next time and still works offline.
       </p>
+      <InstallLink className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
+        <PhoneIcon />
+        Add Shelf to Stacks to your home screen
+      </InstallLink>
     </section>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden className="fill-none stroke-current" strokeWidth="2">
+      <rect x="7" y="2.5" width="10" height="19" rx="2" />
+      <path d="M11 18.5h2" strokeLinecap="round" />
+    </svg>
   );
 }
