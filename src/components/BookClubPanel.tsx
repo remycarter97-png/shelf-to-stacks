@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { navigate } from "../lib/router";
+import { load, save } from "../lib/storage";
 import { Button, Input } from "./ui";
 
 export type ClubPick = { id: string; title: string; author: string; imageUrl: string };
@@ -21,6 +22,8 @@ export function BookClubPanel({ picks, onRemove }: { picks: ClubPick[]; onRemove
         p_options: picks.map((p) => ({ title: p.title, author: p.author, image_url: p.imageUrl })),
       });
       if (error) throw error;
+      // Remember polls made on this device, so their creator gets a "Back to my shelf" link.
+      save("my-polls", [...load<string[]>("my-polls", []), data as string].slice(-50));
       navigate(`/vote/${data as string}`);
     } catch {
       setErr("Couldn't create the vote. Check your connection and try again.");

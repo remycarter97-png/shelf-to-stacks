@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase, voterToken } from "../lib/supabase";
 import { navigate } from "../lib/router";
 import { load, save } from "../lib/storage";
-import { Logo } from "./Logo";
 import { Button, Input, cx } from "./ui";
 
 type Option = { id: string; title: string; author: string; image_url: string };
@@ -18,6 +17,7 @@ export function VotePage({ pollId }: { pollId: string }) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const isCreator = load<string[]>("my-polls", []).includes(pollId);
   const voted = !!load<Record<string, string>>("my-votes", {})[pollId];
 
   const refresh = useCallback(async () => {
@@ -86,18 +86,14 @@ export function VotePage({ pollId }: { pollId: string }) {
   const top = Math.max(0, ...options.map((o) => tally(o.id).length));
 
   return (
-    <div className="min-h-screen">
-      <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
-        <div className="safe-x mx-auto flex h-16 max-w-3xl items-center justify-between">
-          <button type="button" onClick={() => navigate("/")} aria-label="Shelf to Stacks home">
-            <Logo />
+    <div className="safe-top min-h-screen">
+      {/* Voters see only the survey. The person who created it on this device gets a way back. */}
+      <main className="safe-x safe-bottom mx-auto max-w-3xl pb-16 pt-6">
+        {isCreator && (
+          <button type="button" onClick={() => navigate("/")} className="py-2 text-sm text-muted-foreground hover:text-foreground">
+            ← Back to my shelf
           </button>
-        </div>
-      </header>
-      <main className="safe-x safe-bottom mx-auto max-w-3xl pb-16 pt-8">
-        <button type="button" onClick={() => navigate("/")} className="py-2 text-sm text-muted-foreground hover:text-foreground">
-          ← Back to my shelf
-        </button>
+        )}
         {!supabase ? (
           <p className="mt-8 text-muted-foreground">Book club voting isn't set up on this site yet.</p>
         ) : loading ? (
@@ -106,7 +102,7 @@ export function VotePage({ pollId }: { pollId: string }) {
           <p className="mt-8 text-muted-foreground">This vote doesn't exist. Check the link.</p>
         ) : (
           <>
-            <p className="mt-6 text-xs uppercase tracking-[0.2em] text-muted-foreground">Book club vote</p>
+            <p className={cx("text-xs uppercase tracking-[0.2em] text-muted-foreground", isCreator ? "mt-4" : "mt-4 sm:mt-8")}>Book club vote</p>
             <h1 className="mt-2 font-display text-4xl [overflow-wrap:anywhere]">{poll.title}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               <span className="text-muted-foreground">

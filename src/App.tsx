@@ -10,7 +10,7 @@ export function App() {
     <>
       <OfflineBanner />
       {vote ? <VotePage pollId={vote[1]} /> : <Home />}
-      <InstallPrompt />
+      {!vote && <InstallPrompt />}
     </>
   );
 }
