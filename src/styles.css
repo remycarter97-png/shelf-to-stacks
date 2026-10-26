@@ -169,6 +169,7 @@
   --muted-foreground: var(--fascia-muted);
   --border: color-mix(in srgb, var(--fascia-ink) 38%, transparent);
   --muted: color-mix(in srgb, var(--fascia-ink) 12%, transparent);
+  --card: color-mix(in srgb, var(--fascia-ink) 8%, transparent); /* outline buttons on the sign stay readable */
   --primary: var(--accent);
   --primary-foreground: var(--link);
   position: relative;
