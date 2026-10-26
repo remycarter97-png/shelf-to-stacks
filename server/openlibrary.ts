@@ -181,3 +181,40 @@ export async function similarFree(seed: ShelfEntry, shelf: ShelfEntry[]): Promis
   const newBooks = await findNewBooks(seedWork, searchSubjects(seedWork, works), shelf);
   return { onList, newBooks };
 }
+
+export type SearchHit = { title: string; author: string; year?: number; isbn: string; coverUrl: string };
+
+/** Turns an Open Library search result into a book a club can add. Pure, so it can be tested. */
+export function toSearchHit(doc: any): SearchHit | null {
+  const title = String(doc?.title ?? "").trim();
+  if (!title) return null;
+  const isbns: string[] = Array.isArray(doc.isbn) ? doc.isbn.map(String) : [];
+  const isbn = isbns.find((i) => /^97[89]\d{10}$/.test(i)) ?? isbns.find((i) => /^\d{9}[\dX]$/i.test(i)) ?? "";
+  return {
+    title: title.slice(0, 300),
+    author: String(doc.author_name?.[0] ?? "").slice(0, 200),
+    year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : undefined,
+    isbn,
+    coverUrl: typeof doc.cover_i === "number" ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : "",
+  };
+}
+
+/** Title/author search for adding a book by name (cached for a day). */
+export async function searchBooks(q: string): Promise<SearchHit[]> {
+  const query = q.trim().replace(/\s+/g, " ").slice(0, 120);
+  if (query.length < 2) return [];
+  const key = `ol:search:v1:${query.toLowerCase()}`;
+  const cached = await cacheGet<SearchHit[]>(key);
+  if (cached) return cached;
+  const params = new URLSearchParams({
+    q: query,
+    limit: "8",
+    fields: "title,author_name,first_publish_year,cover_i,isbn",
+  });
+  const res = await fetchWithTimeout(`${OL}/search.json?${params}`, { headers: HEADERS }, 8_000);
+  if (!res.ok) throw new Error(`Open Library search failed (${res.status}).`);
+  const docs = ((await res.json()) as { docs?: any[] }).docs ?? [];
+  const hits = docs.map(toSearchHit).filter((h): h is SearchHit => !!h);
+  await cacheSet(key, hits, 24 * 3600);
+  return hits;
+}

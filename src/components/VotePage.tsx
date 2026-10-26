@@ -3,6 +3,7 @@ import { MAX_RANKS, countRankedChoice } from "../../shared/rankedChoice";
 import { supabase, voterToken } from "../lib/supabase";
 import { navigate } from "../lib/router";
 import { load, save } from "../lib/storage";
+import { organizerKey, setStatus } from "../lib/hub";
 import { Button, Input, cx } from "./ui";
 
 type Option = { id: string; title: string; author: string; image_url: string };
@@ -27,6 +28,9 @@ export function VotePage({ pollId }: { pollId: string }) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showRounds, setShowRounds] = useState(false);
+  // Votes started from a shared club page link back to it.
+  const [hub, setHub] = useState<{ id: string; name: string; bookFor: Record<string, string> } | null>(null);
+  const [promoting, setPromoting] = useState(false);
   const isCreator = load<string[]>("my-polls", []).includes(pollId);
   const voted = myRankings(pollId).length > 0;
   const maxRanks = Math.min(MAX_RANKS, options.length || MAX_RANKS);
@@ -48,6 +52,29 @@ export function VotePage({ pollId }: { pollId: string }) {
     setOptions(o.data ?? []);
     setVotes((rows ?? []).map((x) => ({ option_id: x.option_id!, voter_name: x.voter_name!, rankings: x.rankings ?? [x.option_id!] })));
     setLoading(false);
+  }, [pollId]);
+
+  useEffect(() => {
+    const db = supabase;
+    if (!db) return;
+    let gone = false;
+    (async () => {
+      // These columns only exist once the club page setup has been run; errors just mean no club.
+      const p = await db.from("club_polls").select("hub_id").eq("id", pollId).maybeSingle();
+      const hubId = p.error ? null : (p.data?.hub_id as string | null);
+      if (!hubId) return;
+      const [h, o] = await Promise.all([
+        db.from("club_hubs").select("name").eq("id", hubId).maybeSingle(),
+        db.from("club_poll_options").select("id,hub_book_id").eq("poll_id", pollId),
+      ]);
+      if (gone || h.error || !h.data) return;
+      const bookFor: Record<string, string> = {};
+      for (const row of o.data ?? []) if (row.hub_book_id) bookFor[row.id] = row.hub_book_id;
+      setHub({ id: hubId, name: h.data.name, bookFor });
+    })();
+    return () => {
+      gone = true;
+    };
   }, [pollId]);
 
   useEffect(() => {
@@ -117,10 +144,16 @@ export function VotePage({ pollId }: { pollId: string }) {
     <div className="safe-top min-h-screen">
       {/* Voters see only the survey. The person who created it on this device gets a way back. */}
       <main className="safe-x safe-bottom mx-auto max-w-3xl pb-16 pt-6">
-        {isCreator && (
-          <button type="button" onClick={() => navigate("/")} className="py-2 text-sm text-muted-foreground hover:text-foreground">
-            ← Back to my shelf
+        {hub ? (
+          <button type="button" onClick={() => navigate(`/c/${hub.id}`)} className="py-2 text-sm text-muted-foreground hover:text-foreground [overflow-wrap:anywhere]">
+            ← Back to {hub.name}
           </button>
+        ) : (
+          isCreator && (
+            <button type="button" onClick={() => navigate("/")} className="py-2 text-sm text-muted-foreground hover:text-foreground">
+              ← Back to my shelf
+            </button>
+          )
         )}
         {!supabase ? (
           <p className="mt-8 text-muted-foreground">Book club voting isn't set up on this site yet.</p>
@@ -130,7 +163,7 @@ export function VotePage({ pollId }: { pollId: string }) {
           <p className="mt-8 text-muted-foreground">This vote doesn't exist. Check the link.</p>
         ) : (
           <>
-            <p className={cx("text-xs uppercase tracking-[0.2em] text-muted-foreground", isCreator ? "mt-4" : "mt-4 sm:mt-8")}>
+            <p className={cx("text-xs uppercase tracking-[0.2em] text-muted-foreground", isCreator || hub ? "mt-4" : "mt-4 sm:mt-8")}>
               Book club vote · ranked choice
             </p>
             <h1 className="mt-2 font-display text-4xl [overflow-wrap:anywhere]">{poll.title}</h1>
@@ -305,6 +338,32 @@ export function VotePage({ pollId }: { pollId: string }) {
                   )}
 
                   <p className="mt-4 text-xs text-muted-foreground">Voted: {votes.map((v) => v.voter_name).join(", ")}</p>
+
+                  {hub && organizerKey(hub.id) && count.winners.length === 1 && hub.bookFor[count.winners[0]] && (
+                    <div className="mt-6 rounded-lg border border-accent-strong/40 bg-accent/10 p-4 text-sm">
+                      <p>
+                        <b>Organizer:</b> when voting's done, make the winner the club's current read. It shows at the top of the
+                        club page, and the book now being read moves to past reads.
+                      </p>
+                      <Button
+                        className="mt-3"
+                        disabled={promoting}
+                        onClick={async () => {
+                          setPromoting(true);
+                          try {
+                            await setStatus(hub.id, hub.bookFor[count.winners[0]], "current");
+                            navigate(`/c/${hub.id}`);
+                          } catch (e) {
+                            setMsg({ ok: false, text: (e as Error).message });
+                          } finally {
+                            setPromoting(false);
+                          }
+                        }}
+                      >
+                        {promoting ? "Saving…" : `Make “${titleOf(count.winners[0])}” our current read`}
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
             </section>

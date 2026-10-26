@@ -48,6 +48,10 @@ export const api = {
       ratingsAverage?: number;
       ratingsCount?: number;
     }>(`/api/bookinfo?${new URLSearchParams({ title, author, isbn }).toString()}`),
+  bookSearch: (q: string) =>
+    call<{ results: Array<{ title: string; author: string; year?: number; isbn: string; coverUrl: string }> }>(
+      `/api/booksearch?${new URLSearchParams({ q }).toString()}`,
+    ),
   similar: (seed: { title: string; author: string }, shelf: Array<{ title: string; author: string }>, mode: "ai" | "openlibrary") =>
     call<{
       onList: Array<{ index: number; reason: string }>;

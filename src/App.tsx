@@ -3,17 +3,21 @@ import { InstallHelp, InstallPrompt, OfflineBanner } from "./components/InstallP
 import { VotePage } from "./components/VotePage";
 import { ClubPage } from "./components/ClubPage";
 import { BookPage } from "./components/BookPage";
+import { HubPage } from "./components/HubPage";
 import { usePath } from "./lib/router";
 
 export function App() {
   const path = usePath();
   const vote = path.match(/^\/vote\/([0-9a-f-]{36})\/?$/i);
   const book = path.match(/^\/book\/(.+?)\/?$/);
+  const hub = path.match(/^\/c\/([0-9a-f-]{36})\/?$/i);
   return (
     <>
       <OfflineBanner />
       {vote ? (
         <VotePage pollId={vote[1]} />
+      ) : hub ? (
+        <HubPage key={hub[1]} hubId={hub[1]} />
       ) : book ? (
         <BookPage id={safeDecode(book[1])} />
       ) : /^\/club\/?$/.test(path) ? (
@@ -21,7 +25,7 @@ export function App() {
       ) : (
         <Home />
       )}
-      {!vote && <InstallPrompt />}
+      {!vote && !hub && <InstallPrompt />}
       <InstallHelp />
     </>
   );

@@ -36,6 +36,11 @@ export function BookClubPanel({ picks, onRemove }: { picks: ClubPick[]; onRemove
           Compare everyone's lists to find books in common →
         </button>
       </p>
+      <p className="mt-1 text-sm">
+        <button type="button" onClick={() => navigate("/club")} className="font-medium text-link underline underline-offset-2">
+          Set up a shared club page (suggestions, meetings, ratings) →
+        </button>
+      </p>
       {picks.length === 0 ? (
         <p className="mt-3 italic text-muted-foreground">
           Tap “+ Book club shortlist” on two or more books above, then create a voting link to share with your club. Everyone ranks their top 3, and the winner is decided by ranked-choice count.

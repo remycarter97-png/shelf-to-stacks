@@ -12,6 +12,7 @@ import { timeAgo } from "../lib/format";
 import { useAvailability } from "../lib/useAvailability";
 import { formatCode, useClubSync } from "../lib/clubSync";
 import { Logo } from "./Logo";
+import { SharedClubPanel } from "./SharedClubPanel";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
 type Member = ClubMember & {
@@ -200,6 +201,8 @@ export function ClubPage() {
             </button>
           </div>
         </section>
+
+        <SharedClubPanel defaultName={club.name} />
 
         {sync.available && <SyncPanel sync={sync} />}
 

@@ -12,6 +12,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 - **Book pages**: tap any title for its own page: cover, description, first published year, page count and subjects (from Open Library), full availability with every edition, Libby and where to buy, recommendations, and series info (which number it is, plus the other books from that series on your list, in order). Back returns to the same spot on your shelf.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
 - **Book club page** (`/club`): add each member's public Goodreads profile, StoryGraph export or Goodreads export. The app lists the books on the most members' lists (matching editions by title, author and ISBN), shows library availability, and starts a ranked vote with the picks you choose. Clubs are saved on the device; turn on **Sync across devices** to save them online under a private 16-character sync code and enter that code on other devices.
+- **Shared club page** (`/c/…`): one link for the whole club. Members suggest books for upcoming sessions (search by title or type it in), see the next meeting and add it to their calendar, vote, and rate past reads. The organizer gets a separate private link to schedule meetings, start votes from the suggestions, set the current read and manage the list. Create one from the Book club page.
 - **Book club vote**: shortlist books, create a voting link, share it. Members rank their top 3; the winner is decided by instant-runoff (ranked-choice) counting, with the round-by-round count shown. One ballot per device (voting again updates it).
 - **AI recommendations**: built in but hidden until you plug in an AI provider (see below).
 - **Installable app**: home-screen icon, full-screen launch, works offline with your last results, and an install prompt (Android) or how-to (iPhone).
@@ -22,7 +23,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 ### 1. Book club database (Supabase, free)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) and `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices).
+2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices) and `supabase/migrations/004_club_hub.sql` (shared club pages).
 3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Deploy (Vercel, free)
@@ -78,7 +79,7 @@ npm run build                # type-check + production build
 ```
 
 - `src/` — React app (Vite, Tailwind). `src/lib/useAvailability.ts` runs the parallel checks and saved results.
-- `api/` — one Vercel Function per file: `shelf`, `availability`, `libby`, `recommend`, `similar`, `bookinfo`, `config`.
+- `api/` — one Vercel Function per file: `shelf`, `availability`, `libby`, `recommend`, `similar`, `bookinfo`, `booksearch`, `config`.
 - `server/` — shared server logic: Goodreads RSS, BiblioCommons lookups with circuit breakers, Libby, AI providers, cache.
 - `supabase/migrations/` — book club tables and the two voting functions.
 - `npm run icons` regenerates the home-screen icons from `scripts/make-icons.mjs`.
