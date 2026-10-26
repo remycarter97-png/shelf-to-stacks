@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-/* Warm "library paper" palette carried over from the original design.
+/* Cozy neighborhood bookshop: sage wallpaper, a green shopfront with a striped awning,
+   paper shelf cards, raspberry book-cloth links and lamplight-mustard highlights.
    Colors are tokens so light and dark mode stay in step. */
 @theme inline {
   --radius-sm: calc(var(--radius) - 2px);
@@ -24,57 +25,79 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Caprasimo", ui-serif, Georgia, serif;
+  --font-sans: "Nunito", ui-rounded, ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  /* Light mode: the original Shelf to Stacks (Lovable) palette, value for value. */
-  --radius: 0.375rem;
-  --background: oklch(0.97 0.015 75);
-  --foreground: oklch(0.24 0.03 35);
-  --card: oklch(0.985 0.012 80);
-  --primary: oklch(0.38 0.09 35);
-  --primary-foreground: oklch(0.97 0.02 80);
-  --muted: oklch(0.93 0.018 75);
-  --muted-foreground: oklch(0.48 0.04 50);
-  --accent: oklch(0.68 0.13 55);
-  --accent-strong: oklch(0.68 0.13 55); /* accent buttons keep the original terracotta */
-  --link: oklch(0.52 0.13 48); /* links: a darker terracotta so they stay readable on cream */
-  --accent-foreground: oklch(0.98 0.01 80);
-  --destructive: oklch(0.55 0.18 28);
-  --border: oklch(0.85 0.03 70);
-  --input: oklch(0.88 0.025 70);
-  --ring: oklch(0.6 0.1 50);
-  --success: oklch(0.55 0.12 145);
-  --warning: oklch(0.7 0.14 75);
-  --info: oklch(0.55 0.08 240);
-  --dots: oklch(0.85 0.04 70 / 0.35);
+  --radius: 0.75rem;
+  --background: #e9eddf; /* sage wallpaper */
+  --foreground: #2e3a2f; /* forest ink */
+  --card: #fffbf2; /* shelf-card paper */
+  --primary: #3e5a44; /* shopfront green */
+  --primary-foreground: #fff8ea;
+  --muted: #f3ecda; /* oat paper, for panels inside cards */
+  --muted-foreground: #5b6758;
+  --accent: #e6a73a; /* lamplight */
+  --accent-strong: #e6a73a;
+  --link: #a23b57; /* raspberry book cloth */
+  --accent-foreground: #2e2a1e;
+  --destructive: #b3402f;
+  --border: #d8d2bc;
+  --input: #cdc6ad;
+  --ring: #a23b57;
+  --success: #3d7a48;
+  --warning: #93640f;
+  --info: #3d6a8a;
+  /* The shopfront */
+  --fascia: #3e5a44;
+  --fascia-ink: #fff8ea;
+  --fascia-muted: #d6e2cf;
+  --awning-a: #fff8ea;
+  --awning-b: #c9637c;
+  --shelf: #c9a777;
+  --spine-1: #a23b57;
+  --spine-2: #3e5a44;
+  --spine-3: #e6a73a;
+  --spine-4: #7f9ab0;
+  --spine-5: #d98c6a;
+  --wallpaper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='%23c9d3bb' fill-opacity='.55'%3E%3Cpath d='M14 9c2.5 1.6 3 4.4 0 7-3-2.6-2.5-5.4 0-7z'/%3E%3Cpath d='M14 16c-.9-2.6-3.1-3.4-5.4-2.6.6 2.4 2.8 3.4 5.4 2.6zM14 16c.9-2.6 3.1-3.4 5.4-2.6-.6 2.4-2.8 3.4-5.4 2.6z'/%3E%3Ccircle cx='42' cy='42' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
   color-scheme: light;
 }
 
-/* Dark mode: the warm dark palette from the rebuild. */
+/* Dark mode: the shop after closing, lit by a desk lamp. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.19 0.015 40);
-    --foreground: oklch(0.93 0.02 75);
-    --card: oklch(0.235 0.018 40);
-    --primary: oklch(0.6 0.1 40);
-    --primary-foreground: oklch(0.15 0.02 40);
-    --muted: oklch(0.28 0.02 45);
-    --muted-foreground: oklch(0.74 0.03 65);
-    --accent: oklch(0.72 0.12 58);
-    --accent-strong: oklch(0.78 0.11 60);
-    --link: oklch(0.78 0.11 60);
-    --accent-foreground: oklch(0.17 0.02 40);
-    --destructive: oklch(0.72 0.15 28);
-    --border: oklch(0.34 0.02 45);
-    --input: oklch(0.38 0.02 45);
-    --ring: oklch(0.7 0.1 55);
-    --success: oklch(0.76 0.13 145);
-    --warning: oklch(0.8 0.12 80);
-    --info: oklch(0.76 0.09 240);
-    --dots: oklch(0.42 0.03 50 / 0.35);
+    --background: #1b231d;
+    --foreground: #f2ead8;
+    --card: #243027;
+    --primary: #a9c7a6;
+    --primary-foreground: #1b231d;
+    --muted: #2c3a30;
+    --muted-foreground: #b8c2b0;
+    --accent: #f0b44c;
+    --accent-strong: #f0b44c;
+    --link: #f2a3b7;
+    --accent-foreground: #231c0e;
+    --destructive: #f08a7a;
+    --border: #3a493e;
+    --input: #46564b;
+    --ring: #f2a3b7;
+    --success: #8fd19a;
+    --warning: #f0c060;
+    --info: #8dbbe0;
+    --fascia: #2a3b2e;
+    --fascia-ink: #f6ead0;
+    --fascia-muted: #b9c8b4;
+    --awning-a: #d9ccb0;
+    --awning-b: #8e4257;
+    --shelf: #6b5236;
+    --spine-1: #b8566f;
+    --spine-2: #5f8466;
+    --spine-3: #d9a345;
+    --spine-4: #6e8aa3;
+    --spine-5: #c07a5c;
+    --wallpaper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='%23324036' fill-opacity='.8'%3E%3Cpath d='M14 9c2.5 1.6 3 4.4 0 7-3-2.6-2.5-5.4 0-7z'/%3E%3Cpath d='M14 16c-.9-2.6-3.1-3.4-5.4-2.6.6 2.4 2.8 3.4 5.4 2.6zM14 16c.9-2.6 3.1-3.4 5.4-2.6-.6 2.4-2.8 3.4-5.4 2.6z'/%3E%3Ccircle cx='42' cy='42' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
     color-scheme: dark;
   }
 }
@@ -92,8 +115,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    background-image: radial-gradient(var(--dots) 1px, transparent 1px);
-    background-size: 22px 22px;
+    background-image: var(--wallpaper);
+    background-size: 56px 56px;
+    line-height: 1.6;
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
   }
@@ -102,7 +126,9 @@
   h3,
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 400; /* Caprasimo has one weight; never fake a bolder one */
+    font-synthesis: none;
+    letter-spacing: 0;
   }
   :focus-visible {
     outline: 2px solid var(--color-ring);
@@ -134,4 +160,44 @@
     padding-left: max(1.5rem, env(safe-area-inset-left));
     padding-right: max(1.5rem, env(safe-area-inset-right));
   }
+}
+
+/* The shopfront: a green sign board with a scalloped, striped awning hanging below it.
+   Header contents keep using the normal tokens, re-pointed to light-on-green here. */
+.shop-header {
+  --foreground: var(--fascia-ink);
+  --muted-foreground: var(--fascia-muted);
+  --border: color-mix(in srgb, var(--fascia-ink) 38%, transparent);
+  --muted: color-mix(in srgb, var(--fascia-ink) 12%, transparent);
+  --primary: var(--accent);
+  --primary-foreground: var(--link);
+  position: relative;
+  z-index: 1;
+  margin-bottom: 1.75rem;
+  background: var(--fascia);
+  color: var(--fascia-ink);
+}
+.shop-header::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--awning-a) 0 1.75rem, var(--awning-b) 1.75rem 3.5rem);
+  /* A straight band, then one scallop per stripe */
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% 0.9rem no-repeat,
+    radial-gradient(circle at 50% 0.9rem, #000 0.86rem, transparent calc(0.86rem + 0.5px)) top left / 1.75rem 1.75rem repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% 0.9rem no-repeat,
+    radial-gradient(circle at 50% 0.9rem, #000 0.86rem, transparent calc(0.86rem + 0.5px)) top left / 1.75rem 1.75rem repeat-x;
+  pointer-events: none;
+}
+.shop-header::before {
+  /* the awning's soft shadow on the wall */
+  content: "";
+  position: absolute;
+  inset: calc(100% + 0.5rem) 0 auto 0;
+  height: 1.6rem;
+  background: radial-gradient(ellipse at 50% 0, rgb(0 0 0 / 0.12), transparent 70%) top left / 1.75rem 1.6rem repeat-x;
+  pointer-events: none;
 }

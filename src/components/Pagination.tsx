@@ -69,7 +69,7 @@ export function Pagination({
                 aria-label={`Page ${p}`}
                 className={
                   p === page
-                    ? "min-h-10 min-w-10 rounded-md bg-primary px-2 font-medium tabular-nums text-primary-foreground"
+                    ? "min-h-10 min-w-10 rounded-full bg-primary px-2 font-medium tabular-nums text-primary-foreground"
                     : "hidden min-h-10 min-w-10 rounded-md px-2 tabular-nums text-muted-foreground hover:bg-muted hover:text-foreground sm:block"
                 }
               >

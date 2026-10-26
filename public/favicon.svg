@@ -1,4 +1,2 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <rect width="512" height="512" rx="96" fill="#f8f1e8"/><rect x="126" y="67.5" width="260" height="377" rx="20.8" fill="#6b2f22"/>
-    <rect x="162.4" y="111.7" width="187.2" height="13" rx="3.9000000000000004" fill="#f3d9b8" opacity="0.9"/><rect x="162.4" y="148.10000000000002" width="187.2" height="13" rx="3.9000000000000004" fill="#f3d9b8" opacity="0.65"/><rect x="162.4" y="184.5" width="187.2" height="13" rx="3.9000000000000004" fill="#f3d9b8" opacity="0.45"/>
-    <rect x="162.4" y="361.3" width="187.2" height="13" rx="3.9000000000000004" fill="#c8834e"/></svg>
+    <rect width="512" height="512" rx="112" fill="#3e5a44"/><rect x="133.60000000000002" y="324" width="272" height="74.8" rx="17" fill="#c9637c" /><rect x="160.8" y="242.4" width="238" height="74.8" rx="17" fill="#e6a73a" /><rect x="120.00000000000001" y="160.8" width="258.4" height="74.8" rx="17" fill="#fff8ea" /><rect x="160.8" y="189.7" width="146.2" height="17" rx="17" fill="#3e5a44" opacity="0.5"/><path d="M310.4 160.8V99.60000000000001l23.8 18.7 23.8-18.7V160.8z" fill="#c9637c"/></svg>

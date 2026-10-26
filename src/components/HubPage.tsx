@@ -137,7 +137,7 @@ export function HubPage({ hubId }: { hubId: string }) {
 
   return (
     <div className="min-h-screen">
-      <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
+      <header className="shop-header safe-top">
         <div className="safe-x mx-auto flex h-14 max-w-4xl items-center justify-between gap-3">
           <button type="button" onClick={() => navigate("/")} aria-label="Shelf to Stacks home">
             <Logo />
@@ -166,7 +166,7 @@ export function HubPage({ hubId }: { hubId: string }) {
           <p className="mt-8 text-muted-foreground">This club page doesn't exist. Check the link with whoever sent it.</p>
         ) : (
           <>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Book club</p>
+            <p className="text-sm font-bold text-muted-foreground">Book club</p>
             <h1 className="mt-2 font-display text-4xl font-medium leading-tight [overflow-wrap:anywhere] md:text-5xl">{data.name}</h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
               Suggest books for upcoming sessions, vote on what's next, and rate what we've read.

@@ -1,12 +1,15 @@
+/** A small stack of books and the shop name, as painted on the sign. */
 export function Logo() {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <div className="relative h-9 w-7 rounded-sm bg-primary shadow-sm" aria-hidden>
-        <div className="absolute inset-x-1 top-1 h-0.5 bg-primary-foreground/60" />
-        <div className="absolute inset-x-1 top-2.5 h-0.5 bg-primary-foreground/40" />
-        <div className="absolute inset-x-1 top-4 h-0.5 bg-primary-foreground/30" />
-      </div>
-      <span className="whitespace-nowrap font-display text-lg font-medium">Shelf to Stacks</span>
+      <svg viewBox="0 0 32 32" className="h-9 w-9 shrink-0" aria-hidden>
+        <rect x="5" y="22" width="22" height="6" rx="1.5" style={{ fill: "var(--awning-b)" }} />
+        <rect x="7" y="15.5" width="19" height="6" rx="1.5" style={{ fill: "var(--accent)" }} />
+        <rect x="4" y="9" width="21" height="6" rx="1.5" style={{ fill: "var(--awning-a)" }} />
+        <rect x="7" y="11.2" width="12" height="1.4" rx=".7" style={{ fill: "var(--fascia)", opacity: 0.55 }} />
+        <path d="M21.5 9V3.5l2 1.5 2-1.5V9" style={{ fill: "var(--awning-b)" }} />
+      </svg>
+      <span className="whitespace-nowrap font-display text-xl">Shelf to Stacks</span>
     </div>
   );
 }

@@ -101,7 +101,7 @@ export function MoreLikeThis({ book, library, defaultOpen = false }: { book: Boo
           {q.isError && <p className="text-destructive">{(q.error as Error).message}</p>}
           {q.data && (
             <>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Already on your list</p>
+              <p className="text-sm font-bold text-muted-foreground">Already on your list</p>
               {q.data.onList.length === 0 ? (
                 <p className="mt-1 text-muted-foreground">Nothing else on your list is much like this one.</p>
               ) : (
@@ -134,7 +134,7 @@ export function MoreLikeThis({ book, library, defaultOpen = false }: { book: Boo
                 </ol>
               )}
 
-              <p className="mt-5 text-xs uppercase tracking-wider text-muted-foreground">Not on your list yet</p>
+              <p className="mt-5 text-sm font-bold text-muted-foreground">Not on your list yet</p>
               {newBooks.length === 0 ? (
                 <p className="mt-1 text-muted-foreground">No new suggestions this time.</p>
               ) : (

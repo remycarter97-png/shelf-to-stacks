@@ -104,7 +104,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen">
-      <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
+      <header className="shop-header safe-top">
         <div className="safe-x mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
           <Logo />
           <nav className="flex items-center gap-4 text-sm">
@@ -124,14 +124,11 @@ export function Home() {
 
       <main className="safe-x mx-auto max-w-6xl pb-12">
         <section className="pt-10 sm:pt-14">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-sm font-semibold text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
             {mode === "file" ? "StoryGraph" : "Goodreads"} × {library?.name ?? "your library"}
           </p>
-          <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] md:text-6xl">
-            From your shelf
-            <br />
-            <span className="italic text-accent">to the stacks.</span>
-          </h1>
+          <h1 className="mt-4 max-w-[14ch] font-display text-5xl leading-[1.08] md:text-6xl">From your shelf to the stacks.</h1>
           <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
             Bring your Goodreads or StoryGraph want-to-read list and we'll walk it against your library's catalog — no
             more searching one book at a time.
@@ -204,7 +201,7 @@ export function Home() {
               />
               <label
                 htmlFor="library-file"
-                className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto sm:inline-flex"
+                className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto sm:inline-flex"
               >
                 Upload your export file (.csv)
               </label>
@@ -339,11 +336,40 @@ export function Home() {
         />
       </main>
 
-      <footer className="safe-bottom border-t border-border/60">
+      <BookShelf />
+      <footer className="safe-bottom">
         <p className="safe-x mx-auto max-w-6xl py-8 text-sm leading-relaxed text-muted-foreground">
           Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads or your StoryGraph export.
         </p>
       </footer>
+    </div>
+  );
+}
+
+/** A little shelf of book spines to close the page. Decorative only. */
+function BookShelf() {
+  // width, height, color, band offset (0 = none)
+  const spines: Array<[number, number, number, number]> = [
+    [14, 46, 1, 8], [18, 54, 2, 10], [12, 40, 3, 0], [16, 50, 4, 9], [20, 44, 5, 8], [13, 52, 1, 0], [17, 38, 3, 7],
+    [15, 48, 2, 11], [19, 42, 4, 0], [12, 50, 5, 9], [16, 46, 1, 8], [14, 36, 2, 0], [18, 52, 3, 10], [13, 44, 4, 8],
+  ];
+  let x = 0;
+  return (
+    <div className="safe-x mx-auto max-w-6xl" aria-hidden>
+      <svg viewBox="0 0 260 62" className="block h-16 w-auto" role="presentation">
+        {spines.map(([w, h, c, band], i) => {
+          const sx = x;
+          x += w + 2;
+          const lean = i === 6 ? "rotate(8 " + (sx + w) + " 56)" : undefined;
+          return (
+            <g key={i} transform={lean}>
+              <rect x={sx} y={56 - h} width={w} height={h} rx={2} style={{ fill: `var(--spine-${c})` }} />
+              {band > 0 && <rect x={sx + 2} y={56 - h + band} width={w - 4} height={2.5} rx={1} style={{ fill: "var(--card)", opacity: 0.7 }} />}
+            </g>
+          );
+        })}
+        <rect x={0} y={56} width={260} height={6} rx={2} style={{ fill: "var(--shelf)" }} />
+      </svg>
     </div>
   );
 }
@@ -562,7 +588,7 @@ function About({ onUpload }: { onUpload: () => void }) {
           Clear saved data
         </button>
       </p>
-      <InstallLink className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
+      <InstallLink className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
         <PhoneIcon />
         Add Shelf to Stacks to your home screen
       </InstallLink>

@@ -27,7 +27,7 @@ export function BookClubPanel({ picks, onRemove }: { picks: ClubPick[]; onRemove
 
   return (
     <section className="mt-14 border-t border-border/60 pt-10" aria-labelledby="club-heading">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Book club</p>
+      <p className="text-sm font-bold text-muted-foreground">Book club</p>
       <h2 id="club-heading" className="mt-2 font-display text-2xl">
         Help your club decide
       </h2>

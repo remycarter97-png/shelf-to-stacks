@@ -163,7 +163,7 @@ export function VotePage({ pollId }: { pollId: string }) {
           <p className="mt-8 text-muted-foreground">This vote doesn't exist. Check the link.</p>
         ) : (
           <>
-            <p className={cx("text-xs uppercase tracking-[0.2em] text-muted-foreground", isCreator || hub ? "mt-4" : "mt-4 sm:mt-8")}>
+            <p className={cx("text-sm font-bold text-muted-foreground", isCreator || hub ? "mt-4" : "mt-4 sm:mt-8")}>
               Book club vote · ranked choice
             </p>
             <h1 className="mt-2 font-display text-4xl [overflow-wrap:anywhere]">{poll.title}</h1>

@@ -42,7 +42,7 @@ export function MoreWays({
       {open && (
         <div className="mt-3 grid gap-4 rounded-md border border-border/60 bg-muted/50 p-4 text-sm sm:grid-cols-2">
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-sm font-bold text-muted-foreground">
               Libby{libbyKey ? ` · ${library.short}` : ""}
             </p>
             {!libbyKey && (
@@ -77,7 +77,7 @@ export function MoreWays({
             </OutLink>
           </div>
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Where to buy</p>
+            <p className="mb-2 text-sm font-bold text-muted-foreground">Where to buy</p>
             <ul className="space-y-1">
               {buyLinks(title, author, isbn).map((l) => (
                 <li key={l.label}>

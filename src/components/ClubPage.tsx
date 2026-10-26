@@ -157,7 +157,7 @@ export function ClubPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
+      <header className="shop-header safe-top">
         <div className="safe-x mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
           <button type="button" onClick={() => navigate("/")} aria-label="Shelf to Stacks home">
             <Logo />
@@ -169,7 +169,7 @@ export function ClubPage() {
       </header>
 
       <main className="safe-x safe-bottom mx-auto max-w-6xl pb-16 pt-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Book club</p>
+        <p className="text-sm font-bold text-muted-foreground">Book club</p>
         <h1 className="mt-2 font-display text-4xl font-medium leading-tight md:text-5xl">Find books your club has in common</h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
           Add each member's Goodreads profile or StoryGraph list. We'll show the books that are on the most lists, so you
@@ -559,7 +559,7 @@ function AddMember({ onAdd, count }: { onAdd: (m: Member) => void; count: number
             <input ref={fileRef} id="member-file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => addFile(e.target.files?.[0])} />
             <label
               htmlFor="member-file"
-              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
+              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
             >
               Upload {displayName}'s export (.csv)
             </label>

@@ -155,7 +155,7 @@ export function InstallHelp() {
             </>
           )}
         </ol>
-        <button type="button" onClick={() => setOpen(false)} className="mt-5 min-h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground">
+        <button type="button" onClick={() => setOpen(false)} className="mt-5 min-h-11 w-full rounded-full bg-primary text-sm font-medium text-primary-foreground">
           Got it
         </button>
       </div>
@@ -192,7 +192,7 @@ export function InstallPrompt() {
         {canPrompt && (
           <button
             type="button"
-            className="min-h-10 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+            className="min-h-10 rounded-full bg-primary px-3 text-sm font-medium text-primary-foreground"
             onClick={async () => {
               await install();
               dismiss();

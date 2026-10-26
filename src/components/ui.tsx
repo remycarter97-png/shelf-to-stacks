@@ -8,7 +8,7 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "accent" | "outline" | "ghost" }) {
   const styles = {
-    primary: "bg-primary text-primary-foreground hover:opacity-90",
+    primary: "bg-primary text-primary-foreground shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:opacity-90 active:translate-y-px active:shadow-none",
     accent: "bg-accent-strong text-accent-foreground hover:opacity-90",
     outline: "border border-border bg-card text-foreground hover:bg-muted",
     ghost: "text-muted-foreground hover:text-foreground",
@@ -17,7 +17,7 @@ export function Button({
     <button
       {...props}
       className={cx(
-        "inline-flex min-h-11 items-center justify-center rounded-md px-5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
         styles,
         className,
       )}

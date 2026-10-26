@@ -31,7 +31,7 @@ export function Recommendations({ books, library }: { books: Book[]; library: Li
     <section className="mt-14 border-t border-border/60 pt-10" aria-labelledby="recs-heading">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Based on your shelf</p>
+          <p className="text-sm font-bold text-muted-foreground">Based on your shelf</p>
           <h2 id="recs-heading" className="mt-2 font-display text-2xl">
             Books you might want to add
           </h2>

@@ -55,7 +55,7 @@ export function BookPage({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen">
-      <header className="safe-top border-b border-border/60 bg-card/70 backdrop-blur">
+      <header className="shop-header safe-top">
         <div className="safe-x mx-auto flex h-16 max-w-4xl items-center justify-between gap-3">
           <button
             type="button"
