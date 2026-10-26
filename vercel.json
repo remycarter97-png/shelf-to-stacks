@@ -10,6 +10,12 @@
     },
     "api/similar.ts": {
       "maxDuration": 60
+    },
+    "api/genres.ts": {
+      "maxDuration": 60
+    },
+    "api/contact.ts": {
+      "maxDuration": 20
     }
   },
   "rewrites": [

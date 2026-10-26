@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { usePageTitle } from "./JournalPages";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { AppLink, Button, Input, Select } from "./ui";
@@ -21,6 +21,7 @@ export function ContactPage() {
   const [email, setEmail] = useState("");
   const [topic, setTopic] = useState(TOPICS.some(([id]) => id === initialTopic) ? initialTopic! : "general");
   const [message, setMessage] = useState("");
+  const [honey, setHoney] = useState(""); // hidden field; only bots fill it in
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -28,22 +29,11 @@ export function ContactPage() {
     e.preventDefault();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return fail("Enter a valid email address so we can reply.");
     if (message.trim().length < 5) return fail("Write a short message first.");
-    if (!supabase) return fail("The contact form isn't switched on for this site yet.");
     setState("sending");
-    const { error: err } = await supabase.rpc("send_contact", {
-      p_name: name.trim() || null,
-      p_email: email.trim(),
-      p_topic: topic,
-      p_message: message.trim(),
-    });
-    if (err) {
-      return fail(
-        /too many|valid|short message/i.test(err.message)
-          ? err.message
-          : navigator.onLine
-            ? "Your message didn't go through. Try again in a moment."
-            : "You're offline. Connect to the internet and send it again.",
-      );
+    try {
+      await api.contact({ name: name.trim(), email: email.trim(), topic, message: message.trim(), website: honey });
+    } catch (err) {
+      return fail(navigator.onLine ? (err as Error).message : "You're offline. Connect to the internet and send it again.");
     }
     setState("sent");
   };
@@ -101,7 +91,17 @@ export function ContactPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} noValidate className="grid gap-4 self-start rounded-[1.6rem] bg-card p-6 md:p-8" style={{ boxShadow: "var(--shadow-soft)" }}>
+          <form onSubmit={submit} noValidate className="relative grid gap-4 self-start rounded-[1.6rem] bg-card p-6 md:p-8" style={{ boxShadow: "var(--shadow-soft)" }}>
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={honey}
+              onChange={(e) => setHoney(e.target.value)}
+              className="absolute -left-[9999px] h-px w-px opacity-0"
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Your name" hint="optional">
                 <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={120} />

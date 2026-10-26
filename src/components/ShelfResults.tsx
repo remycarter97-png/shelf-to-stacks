@@ -9,6 +9,9 @@ import { PAGE_SIZES, Pagination } from "./Pagination";
 import { BookCard } from "./BookCard";
 import { Button, Input, Select, cx } from "./ui";
 import type { ClubPick } from "./BookClubPanel";
+import { GENRE_BY_ID, type GenreId } from "../../shared/genres";
+import { useGenres } from "../lib/useGenres";
+import { MoodPicker } from "./Moods";
 
 type Filter = "all" | "available" | "checked_out" | "not_found";
 type Sort = "shelf" | "title" | "author" | "status";
@@ -53,6 +56,8 @@ export function ShelfResults({
     };
   }, []);
   const [format, setFormat] = useState("all");
+  const [mood, setMood] = useState<GenreId | "all">("all");
+  const { genres, loading: genresLoading, missing: genresMissing } = useGenres(books);
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<number>(() => {
     const n = load("page-size", 10);
@@ -85,16 +90,16 @@ export function ShelfResults({
     }
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, sort, format, query, books]);
+  }, [filter, sort, format, query, mood, books]);
 
   const rows = useMemo(
     () =>
       books.map((book) => {
         const k = bookKey(book);
         const e = entries.get(k);
-        return { book, key: k, result: e?.result, at: e?.at, failedAt: e?.failedAt, checking: pending.has(k) };
+        return { book, key: k, result: e?.result, at: e?.at, failedAt: e?.failedAt, checking: pending.has(k), genres: genres[k] };
       }),
-    [books, entries, pending],
+    [books, entries, pending, genres],
   );
 
   const counts = useMemo(() => {
@@ -108,6 +113,12 @@ export function ShelfResults({
     }
     return c;
   }, [rows, books.length]);
+
+  const moodCounts = useMemo(() => {
+    const m = new Map<GenreId, number>();
+    for (const r of rows) for (const g of r.genres ?? []) m.set(g, (m.get(g) ?? 0) + 1);
+    return m;
+  }, [rows]);
 
   const formats = useMemo(() => {
     const set = new Set<string>();
@@ -124,6 +135,7 @@ export function ShelfResults({
       if (filter === "checked_out" && s !== "checked_out" && s !== "on_order") return false;
       if (filter === "not_found" && s !== "not_found") return false;
       if (format !== "all" && prettyFormat(r.result?.format) !== format) return false;
+      if (mood !== "all" && !r.genres?.includes(mood)) return false;
       if (words.length) {
         const hay = fold(`${r.book.title} ${r.book.author}`);
         if (!words.every((w) => hay.includes(w))) return false;
@@ -138,7 +150,7 @@ export function ShelfResults({
           ? r.book.author.toLowerCase() || "￿"
           : String(RANK[r.result?.status ?? "checking"]) + r.book.title.toLowerCase();
     return [...list].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
-  }, [rows, filter, format, query, sort]);
+  }, [rows, filter, format, query, sort, mood]);
 
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(page, pages);
@@ -172,10 +184,12 @@ export function ShelfResults({
   const oldest = rows.reduce<number | undefined>((m, r) => (r.at && (!m || r.at < m) ? r.at : m), undefined);
   const unverified = rows.filter((r) => r.failedAt && r.result && r.result.status !== "error").length;
   const staleCount = rows.filter((r) => r.at && Date.now() - r.at > STALE_MS).length;
-  const filtersOn = filter !== "all" || format !== "all";
+  const filtersOn = filter !== "all" || format !== "all" || mood !== "all";
 
   const heading =
-    filter === "available"
+    mood !== "all"
+      ? `${GENRE_BY_ID[mood].label}: ${shown.length} ${shown.length === 1 ? "book" : "books"}`
+      : filter === "available"
       ? `${counts.available} available at ${L}`
       : filter === "checked_out"
         ? `${counts.checked_out} owned by ${L}, all copies out`
@@ -217,6 +231,8 @@ export function ShelfResults({
           )}
         </div>
       )}
+
+      <MoodPicker counts={moodCounts} selected={mood} onSelect={setMood} loading={genresLoading} missing={genresMissing} />
 
       <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
         <Input
@@ -317,6 +333,7 @@ export function ShelfResults({
           <BookCard
             key={r.book.id}
             book={r.book}
+            genres={r.genres}
             state={{ result: r.result, checking: r.checking, checkedAt: r.at, failedAt: r.failedAt }}
             library={library}
             picked={picks.some((p) => p.id === r.book.id)}
@@ -352,6 +369,7 @@ export function ShelfResults({
                 onClick={() => {
                   setFilter("all");
                   setFormat("all");
+                  setMood("all");
                 }}
               >
                 Show all books

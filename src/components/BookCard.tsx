@@ -1,3 +1,5 @@
+import type { GenreId } from "../../shared/genres";
+import { GenreTags } from "./Moods";
 import { useState } from "react";
 import type { Availability, Book, Edition, Status } from "../../shared/types";
 import {
@@ -54,8 +56,10 @@ export function BookCard({
   picked,
   onTogglePick,
   onRetry,
+  genres,
 }: {
   book: Book;
+  genres?: GenreId[];
   state: CardState;
   library: LibrarySystem;
   picked: boolean;
@@ -94,6 +98,7 @@ export function BookCard({
         </h3>
         {series && <p className="mt-0.5 truncate text-xs text-muted-foreground">{series}</p>}
         {book.author && <p className="mt-0.5 text-sm text-muted-foreground">by {book.author}</p>}
+        <GenreTags ids={genres} className="mt-2" />
 
         <p className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-medium" aria-live="polite">
           <span className={cx("h-2 w-2 shrink-0 rounded-full", s.dot)} aria-hidden />

@@ -6,6 +6,7 @@ import type {
   Recommendation,
   ShelfResponse,
 } from "../../shared/types";
+import type { GenreId } from "../../shared/genres";
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -35,6 +36,10 @@ export const api = {
     ),
   recommend: (books: Array<{ title: string; author: string }>) =>
     call<{ recommendations: Recommendation[] }>("/api/recommend", post({ books })),
+  genres: (books: Array<{ key: string; title: string; author: string; isbn: string }>) =>
+    call<{ results: Array<{ key: string; genres: GenreId[] | null }> }>("/api/genres", post({ books })),
+  contact: (msg: { name: string; email: string; topic: string; message: string; website: string }) =>
+    call<{ ok: boolean; saved?: boolean; emailed?: boolean }>("/api/contact", post(msg)),
   config: () => call<AppConfig>("/api/config"),
   bookInfo: (title: string, author: string, isbn: string) =>
     call<{

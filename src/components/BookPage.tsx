@@ -1,3 +1,5 @@
+import { GenreTags } from "./Moods";
+import { useGenres } from "../lib/useGenres";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { bookKey, type Book } from "../../shared/types";
@@ -90,6 +92,7 @@ function NotOnList() {
 }
 
 function BookDetails({ book, books, library }: { book: Book; books: Book[]; library: LibrarySystem }) {
+  const { genres } = useGenres(useMemo(() => [book], [book]));
   const one = useMemo(() => [book], [book]);
   const { entries, pending, retry, live } = useAvailability(one, library);
   const entry = entries.get(bookKey(book));
@@ -155,6 +158,7 @@ function BookDetails({ book, books, library }: { book: Book; books: Book[]; libr
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-3xl font-medium leading-tight [overflow-wrap:anywhere] sm:text-4xl">{main}</h1>
             {book.author && <p className="mt-2 text-lg text-muted-foreground">by {book.author}</p>}
+            <GenreTags ids={genres[bookKey(book)]} className="mt-3" />
             {series && (
               <p className="mt-2 text-sm">
                 <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
