@@ -3,12 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Book } from "../../shared/types";
 import { importLibraryCsv } from "../../shared/importCsv";
 import { api } from "../lib/api";
-import {
-  LIBRARIES,
-  makeCustomLibrary,
-  type CustomLibraryInput,
-  type LibrarySystem,
-} from "../lib/libraries";
+import { LIBRARIES, savedLibrary, type LibrarySystem } from "../lib/libraries";
+import { LibraryRequest } from "./LibraryRequest";
 import { clearAll, load, requestPersistentStorage, save } from "../lib/storage";
 import { timeAgo } from "../lib/format";
 import { BookClubPanel, type ClubPick } from "./BookClubPanel";
@@ -25,9 +21,9 @@ type SavedShelf = { userId: string; books: Book[]; at: number; origin?: ShelfOri
 
 export function Home() {
   const [userId, setUserId] = useState(() => load("userId", ""));
-  // No library is picked for a first-time visitor; the page asks them to choose one.
-  const [libId, setLibId] = useState(() => load("library", ""));
-  const [custom, setCustom] = useState<CustomLibraryInput>(() => load("custom-library", { name: "", catalog: "", libby: "" }));
+  // Boston Public Library is the only library for now; readers elsewhere can request theirs.
+  const [libId, setLibId] = useState(() => savedLibrary().id);
+  const [requesting, setRequesting] = useState(false);
   const [shelf, setShelf] = useState<SavedShelf | null>(() => load<SavedShelf | null>("shelf", null));
   const [picks, setPicks] = useState<ClubPick[]>(() => load("club-picks", []));
   const [mode, setMode] = useState<ShelfOrigin>(() => load<SavedShelf | null>("shelf", null)?.origin ?? load<ShelfOrigin>("mode", "goodreads"));
@@ -35,10 +31,7 @@ export function Home() {
   const fileInput = useRef<HTMLInputElement>(null);
   const config = useQuery({ queryKey: ["config"], queryFn: api.config, staleTime: Infinity, retry: false });
 
-  const library: LibrarySystem | null = useMemo(
-    () => (libId === "custom" ? makeCustomLibrary(custom) : (LIBRARIES.find((l) => l.id === libId) ?? null)),
-    [libId, custom],
-  );
+  const library: LibrarySystem | null = useMemo(() => LIBRARIES.find((l) => l.id === libId) ?? null, [libId]);
 
   useEffect(() => save("club-picks", picks), [picks]);
 
@@ -126,7 +119,7 @@ export function Home() {
         <section className="pt-10 sm:pt-14">
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-sm font-semibold text-muted-foreground">
             <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
-            {mode === "file" ? "StoryGraph" : "Goodreads"} × {library?.name ?? "your library"}
+            Your List × Your Library
           </p>
           <h1 className="mt-4 max-w-[14ch] font-display text-5xl leading-[1.08] md:text-6xl">From your shelf to the stacks.</h1>
           <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
@@ -224,40 +217,31 @@ export function Home() {
               id="library"
               value={libId}
               onChange={(e) => {
+                // "Request a different library" opens the request form; the chosen library stays as it was.
+                if (e.target.value === "request") return setRequesting(true);
                 setLibId(e.target.value);
                 save("library", e.target.value);
               }}
               className={cx("min-w-0 max-w-full flex-1 sm:flex-none", !library && "ring-2 ring-accent")}
-              aria-describedby={!library ? "library-hint" : undefined}
             >
-              <option value="" disabled>
-                Choose your library…
-              </option>
               {LIBRARIES.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
               ))}
-              <option value="custom">Other library…</option>
+              <option value="request">Request a different library…</option>
             </Select>
           </div>
 
-          {!library && libId !== "custom" && (
-            <p id="library-hint" className="mt-2 text-sm text-muted-foreground">
-              Pick the library where you borrow books. Boston Public Library gets live availability; you can also enter
-              another library with “Other library…”.
+          {requesting ? (
+            <LibraryRequest onClose={() => setRequesting(false)} />
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Borrow somewhere else?{" "}
+              <button type="button" onClick={() => setRequesting(true)} className="text-link underline underline-offset-2">
+                Request a different library
+              </button>
             </p>
-          )}
-
-          {libId === "custom" && (
-            <CustomLibraryForm
-              value={custom}
-              onChange={(v) => {
-                setCustom(v);
-                save("custom-library", v);
-              }}
-              library={library!}
-            />
           )}
 
           {mode === "goodreads" && <HelpHint />}
@@ -370,58 +354,6 @@ function BookShelf() {
         })}
         <rect x={0} y={56} width={260} height={6} rx={2} style={{ fill: "var(--shelf)" }} />
       </svg>
-    </div>
-  );
-}
-
-function CustomLibraryForm({
-  value,
-  onChange,
-  library,
-}: {
-  value: CustomLibraryInput;
-  onChange: (v: CustomLibraryInput) => void;
-  library: LibrarySystem;
-}) {
-  return (
-    <div className="mt-4 grid max-w-2xl gap-3 rounded-md border border-border/60 bg-card p-4 text-sm">
-      <label className="grid gap-1">
-        <span className="font-medium">Library system name</span>
-        <Input value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="e.g. Chicago Public Library" className="h-11" />
-      </label>
-      <label className="grid gap-1">
-        <span className="font-medium">
-          Catalog web address <span className="font-normal text-muted-foreground">(optional)</span>
-        </span>
-        <Input
-          value={value.catalog}
-          onChange={(e) => onChange({ ...value, catalog: e.target.value })}
-          placeholder="e.g. chipublib.bibliocommons.com"
-          className="h-11"
-          inputMode="url"
-          autoCapitalize="off"
-          spellCheck={false}
-        />
-      </label>
-      <label className="grid gap-1">
-        <span className="font-medium">
-          Libby library <span className="font-normal text-muted-foreground">(optional)</span>
-        </span>
-        <Input
-          value={value.libby}
-          onChange={(e) => onChange({ ...value, libby: e.target.value })}
-          placeholder="e.g. libbyapp.com/library/chipublib"
-          className="h-11"
-          inputMode="url"
-          autoCapitalize="off"
-          spellCheck={false}
-        />
-      </label>
-      <p className="text-muted-foreground">
-        {library.mode === "live"
-          ? `Your catalog runs on BiblioCommons, so we'll check availability live.`
-          : "If your catalog's address ends in bibliocommons.com we can check availability live. Otherwise each book links to a search of libraries near you."}
-      </p>
     </div>
   );
 }
@@ -568,9 +500,8 @@ function About({ onUpload }: { onUpload: () => void }) {
       <h2 className="font-display text-xl text-foreground">How it works</h2>
       <p className="mt-2">
         We read your public Goodreads Want to Read shelf (or the to-read books in a StoryGraph export), then look each
-        book up in your library's catalog. Boston Public
-        Library (and any library on BiblioCommons) gets live availability; Minuteman libraries get a direct catalog link
-        for each book.
+        book up in Boston Public Library's catalog for live availability. Borrow somewhere else? Use “Request a
+        different library” and we'll look into adding it.
       </p>
       <p className="mt-2">
         No account needed. Your list, library, last results, book club shortlist and display choices are saved only on

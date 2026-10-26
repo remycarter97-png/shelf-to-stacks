@@ -1,33 +1,20 @@
-// Library systems the app knows about.
-// - Boston Public Library: live availability through its BiblioCommons catalog.
-// - Minuteman Library Network members share one catalog (catalog.minlib.net, Aspen Discovery) that blocks
-//   automated lookups, so they get catalog search links.
-// - "Other library": the reader types their library's name. If its catalog is on
-//   BiblioCommons (address ends in bibliocommons.com) it gets live checks too.
+import { load } from "./storage";
+
+// Library systems the app knows about. For now that's Boston Public Library, with live
+// availability through its BiblioCommons catalog. Readers elsewhere can ask for their library
+// with "Request a different library" (saved to Supabase: library_requests).
 
 export type LibrarySystem = {
   id: string;
   name: string;
-  /** Short label used in buttons, e.g. "BPL" or "Cambridge". */
+  /** Short label used in buttons, e.g. "BPL". */
   short: string;
   mode: "live" | "link";
   /** BiblioCommons code (the part before .bibliocommons.com), for live checks. */
   biblioCode?: string;
-  /** Libby / OverDrive library key, e.g. "bpl" or "minuteman". */
+  /** Libby / OverDrive library key, e.g. "bpl". */
   libbyKey?: string;
-  network: "bibliocommons" | "minuteman" | "custom";
-  /** Custom libraries only: a catalog homepage the reader gave us. */
-  catalogUrl?: string;
 };
-
-const mln = (id: string, name: string, town: string): LibrarySystem => ({
-  id,
-  name,
-  short: town,
-  mode: "link",
-  libbyKey: "minuteman",
-  network: "minuteman",
-});
 
 export const LIBRARIES: LibrarySystem[] = [
   {
@@ -37,97 +24,15 @@ export const LIBRARIES: LibrarySystem[] = [
     mode: "live",
     biblioCode: "bpl",
     libbyKey: "bpl",
-    network: "bibliocommons",
   },
-  mln("acton", "Acton Memorial Library", "Acton"),
-  mln("arlington", "Robbins Library", "Arlington"),
-  mln("ashland", "Ashland Public Library", "Ashland"),
-  mln("bedford", "Bedford Free Public Library", "Bedford"),
-  mln("belmont", "Belmont Public Library", "Belmont"),
-  mln("brookline", "Public Library of Brookline", "Brookline"),
-  mln("cambridge", "Cambridge Public Library", "Cambridge"),
-  mln("concord", "Concord Free Public Library", "Concord"),
-  mln("dedham", "Dedham Public Library", "Dedham"),
-  mln("dover", "Dover Town Library", "Dover"),
-  mln("framingham", "Framingham Public Library", "Framingham"),
-  mln("franklin", "Franklin Public Library", "Franklin"),
-  mln("holliston", "Holliston Public Library", "Holliston"),
-  mln("lexington", "Cary Memorial Library", "Lexington"),
-  mln("lincoln", "Lincoln Public Library", "Lincoln"),
-  mln("maynard", "Maynard Public Library", "Maynard"),
-  mln("medfield", "Medfield Public Library", "Medfield"),
-  mln("medford", "Medford Public Library", "Medford"),
-  mln("medway", "Medway Public Library", "Medway"),
-  mln("millis", "Millis Public Library", "Millis"),
-  mln("natick", "Morse Institute Library", "Natick"),
-  mln("needham", "Needham Free Public Library", "Needham"),
-  mln("newton", "Newton Free Library", "Newton"),
-  mln("norwood", "Morrill Memorial Library", "Norwood"),
-  mln("sherborn", "Sherborn Library", "Sherborn"),
-  mln("somerville", "Somerville Public Library", "Somerville"),
-  mln("stow", "Randall Library", "Stow"),
-  mln("sudbury", "Goodnow Library", "Sudbury"),
-  mln("waltham", "Waltham Public Library", "Waltham"),
-  mln("watertown", "Watertown Free Public Library", "Watertown"),
-  mln("wayland", "Wayland Free Public Library", "Wayland"),
-  mln("wellesley", "Wellesley Free Library", "Wellesley"),
-  mln("weston", "Weston Public Library", "Weston"),
-  mln("westwood", "Westwood Public Library", "Westwood"),
-  mln("winchester", "Winchester Public Library", "Winchester"),
-  mln("woburn", "Woburn Public Library", "Woburn"),
 ];
 
 export const DEFAULT_LIBRARY = LIBRARIES[0];
 
-export type CustomLibraryInput = { name: string; catalog: string; libby: string };
-
-/** "chipublib.bibliocommons.com/v2/..." → "chipublib" */
-export function biblioCodeFrom(input: string): string | undefined {
-  const m = input.trim().toLowerCase().match(/([a-z0-9-]{2,40})\.bibliocommons\.com/);
-  return m && m[1] !== "gateway" && m[1] !== "www" ? m[1] : undefined;
-}
-
-/** "https://libbyapp.com/library/chipublib" or "chipublib" → "chipublib" */
-export function libbyKeyFrom(input: string): string | undefined {
-  const s = input.trim().toLowerCase();
-  if (!s) return undefined;
-  const m = s.match(/libbyapp\.com\/(?:library|search)\/([a-z0-9-]{2,40})/) || s.match(/^([a-z0-9-]{2,40})$/);
-  return m ? m[1] : undefined;
-}
-
-function shortName(name: string) {
-  if (name.length <= 16) return name;
-  const initials = name
-    .split(/\s+/)
-    .filter((w) => /^[A-Z]/.test(w))
-    .map((w) => w[0])
-    .join("");
-  return initials.length >= 2 ? initials : name.slice(0, 16);
-}
-
-export function makeCustomLibrary(input: CustomLibraryInput): LibrarySystem {
-  const name = input.name.trim().slice(0, 80) || "My library";
-  const biblioCode = biblioCodeFrom(input.catalog);
-  let catalogUrl: string | undefined;
-  const raw = input.catalog.trim();
-  if (raw) {
-    const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    try {
-      catalogUrl = new URL(withScheme).toString();
-    } catch {
-      catalogUrl = undefined;
-    }
-  }
-  return {
-    id: "custom",
-    name,
-    short: shortName(name),
-    mode: biblioCode ? "live" : "link",
-    biblioCode,
-    libbyKey: libbyKeyFrom(input.libby),
-    network: "custom",
-    catalogUrl,
-  };
+/** The reader's library. Anything saved that's no longer offered (older Minuteman or custom picks) becomes BPL. */
+export function savedLibrary(): LibrarySystem {
+  const id = load<string>("library", "");
+  return LIBRARIES.find((l) => l.id === id) ?? DEFAULT_LIBRARY;
 }
 
 export function cleanTitle(title: string) {
@@ -138,12 +43,6 @@ export function cleanTitle(title: string) {
 export function splitSeries(title: string): { main: string; series?: string } {
   const m = title.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
   return m ? { main: m[1], series: m[2] } : { main: title };
-}
-
-export function minutemanSearchUrl(title: string, author: string) {
-  const q = encodeURIComponent(`${cleanTitle(title)} ${author}`.trim());
-  // Minuteman's current catalog (Aspen Discovery, since November 2023).
-  return `https://catalog.minlib.net/Search/Results?lookfor=${q}&searchIndex=Keyword`;
 }
 
 export function biblioSearchUrl(code: string, title: string, author: string) {
@@ -159,12 +58,11 @@ export function worldcatUrl(title: string, author: string, isbn?: string) {
 /** Where to send a reader to look a book up in their own catalog. */
 export function catalogLink(lib: LibrarySystem, title: string, author: string, isbn?: string) {
   if (lib.biblioCode) return biblioSearchUrl(lib.biblioCode, title, author);
-  if (lib.network === "minuteman") return minutemanSearchUrl(title, author);
   return worldcatUrl(title, author, isbn);
 }
 
 export function catalogLinkLabel(lib: LibrarySystem) {
-  if (lib.biblioCode || lib.network === "minuteman") return `Check availability at ${lib.short} →`;
+  if (lib.biblioCode) return `Check availability at ${lib.short} →`;
   return "Find it at libraries near you →";
 }
 
@@ -190,7 +88,5 @@ export function buyLinks(title: string, author: string, isbn?: string) {
 export function purchaseSuggestionUrl(lib: LibrarySystem): string | undefined {
   // BiblioCommons libraries (BPL and others) have a built-in suggestion form; readers sign in to use it.
   if (lib.biblioCode) return `https://${lib.biblioCode}.bibliocommons.com/suggested_purchases`;
-  // Minuteman's Aspen Discovery catalog has a network-wide materials request form.
-  if (lib.network === "minuteman") return "https://catalog.minlib.net/MaterialsRequest/NewRequest";
   return undefined;
 }

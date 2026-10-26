@@ -4,14 +4,12 @@ import { bookKey, type Book } from "../../shared/types";
 import { parseSeries, sameSeries, seriesOrder } from "../../shared/series";
 import { api } from "../lib/api";
 import {
-  LIBRARIES,
   catalogLink,
   catalogLinkLabel,
-  makeCustomLibrary,
   purchaseSuggestionUrl,
   splitSeries,
   worldcatUrl,
-  type CustomLibraryInput,
+  savedLibrary,
   type LibrarySystem,
 } from "../lib/libraries";
 import { navigate, openBook } from "../lib/router";
@@ -27,12 +25,6 @@ import { MoreWays } from "./MoreWays";
 import { OutLink, cx } from "./ui";
 
 type SavedShelf = { books: Book[] };
-
-function savedLibrary(): LibrarySystem | null {
-  const id = load<string>("library", "");
-  if (id === "custom") return makeCustomLibrary(load<CustomLibraryInput>("custom-library", { name: "", catalog: "", libby: "" }));
-  return LIBRARIES.find((l) => l.id === id) ?? null;
-}
 
 // The home page restores the shelf's page and scroll position when it opens.
 const goBack = () => navigate("/");

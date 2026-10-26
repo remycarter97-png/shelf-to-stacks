@@ -6,8 +6,8 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 
 - **Shelf check**: paste a Goodreads user ID or profile link; the whole Want to Read shelf loads (up to 1,000 books).
 - **StoryGraph**: upload your StoryGraph library export (CSV) and the app uses the books marked to-read. A Goodreads library export works too. The file is read on the device and never uploaded. Covers come from Open Library by ISBN.
-- **Live availability** for Boston Public Library, and for any library whose catalog is on BiblioCommons ("Other library…"). Books are checked about 15 at a time instead of one by one.
-- **Link-only mode** for the 36 Minuteman libraries and any other library: each book links straight to a catalog or WorldCat search.
+- **Live availability** for Boston Public Library. Books are checked about 15 at a time instead of one by one.
+- **Request a different library**: readers elsewhere can ask for their library from the library picker. Requests are saved to Supabase (`library_requests`); see them in **Table Editor → library_requests**, or the `library_request_counts` view for a tally by library.
 - **Never a dead end**: if a lookup fails, the book still gets a "Check availability at BPL →" link plus a Retry.
 - **Book pages**: tap any title for its own page: cover, description, first published year, page count and subjects (from Open Library), full availability with every edition, Libby and where to buy, recommendations, and series info (which number it is, plus the other books from that series on your list, in order). Back returns to the same spot on your shelf.
 - **More ways to read & buy**: live Libby ebook/audiobook status and Bookshop.org / Amazon / ThriftBooks / AbeBooks links.
@@ -23,7 +23,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 ### 1. Book club database (Supabase, free)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste everything in `supabase/setup_all.sql` and click **Run** (it does all of the steps below in one go). Or, one file at a time: paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices) and `supabase/migrations/004_club_hub.sql` (shared club pages).
+2. Open **SQL Editor → New query**, paste everything in `supabase/setup_all.sql` and click **Run** (it does all of the steps below in one go). Or, one file at a time: paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices) and `supabase/migrations/004_club_hub.sql` (shared club pages) and `supabase/migrations/005_library_requests.sql` (library requests).
 3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Deploy (Vercel, free)
@@ -66,7 +66,7 @@ Requests are limited to 5 per visitor per 10 minutes and 200 per hour site-wide.
 
 ## About catalog access
 
-Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then Bright Data, then ScraperAPI (whichever are set up), and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The Minuteman catalog blocks automated requests entirely, so those libraries are link-only. The lasting fix is permission: ask BPL, Minuteman Library Network or BiblioCommons for sanctioned access. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
+Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then Bright Data, then ScraperAPI (whichever are set up), and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The lasting fix is permission: ask BPL or BiblioCommons for sanctioned access. Other libraries (including the Minuteman network, whose catalog blocks automated lookups) are left out until they can be checked reliably. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
 
 ## For developers
 

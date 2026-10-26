@@ -197,9 +197,7 @@ export function ShelfResults({
       </div>
       {!live && (
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {library.network === "minuteman"
-            ? `${library.name} is part of the Minuteman Library Network, whose catalog doesn't allow automatic checks. Each book links straight to a catalog search.`
-            : `We can't check ${library.name} automatically, so each book links to a search that shows libraries near you that have it.`}
+          {`We can't check ${library.name} automatically, so each book links to a search that shows libraries near you that have it.`}
         </p>
       )}
 

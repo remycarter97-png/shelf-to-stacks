@@ -4,7 +4,7 @@ import { importLibraryCsv } from "../../shared/importCsv";
 import { bookKey, type Book } from "../../shared/types";
 import { api } from "../lib/api";
 import { createVote } from "../lib/club";
-import { LIBRARIES, makeCustomLibrary, type CustomLibraryInput, type LibrarySystem } from "../lib/libraries";
+import { savedLibrary, type LibrarySystem } from "../lib/libraries";
 import { navigate } from "../lib/router";
 import { load, save } from "../lib/storage";
 import { supabase } from "../lib/supabase";
@@ -104,11 +104,7 @@ export function ClubPage() {
     switchClub(next[0].id);
   };
 
-  const libId = load<string>("library", "");
-  const library: LibrarySystem | null =
-    libId === "custom"
-      ? makeCustomLibrary(load<CustomLibraryInput>("custom-library", { name: "", catalog: "", libby: "" }))
-      : (LIBRARIES.find((l) => l.id === libId) ?? null);
+  const library: LibrarySystem | null = savedLibrary();
 
   const common = useMemo(() => findCommonBooks(members), [members]);
   const shared = useMemo(() => common.filter((c) => c.members.length >= minLists), [common, minLists]);
@@ -379,7 +375,7 @@ function CommonList({
 }) {
   const [limit, setLimit] = useState(20);
   // Library availability helps pick a book everyone can actually borrow.
-  const avail = useAvailability(books, library ?? { id: "none", name: "", short: "", mode: "link", network: "custom" });
+  const avail = useAvailability(books, library ?? { id: "none", name: "", short: "", mode: "link" });
   const L = library?.short;
   return (
     <>
