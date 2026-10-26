@@ -23,7 +23,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 ### 1. Book club database (Supabase, free)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices) and `supabase/migrations/004_club_hub.sql` (shared club pages).
+2. Open **SQL Editor → New query**, paste everything in `supabase/setup_all.sql` and click **Run** (it does all of the steps below in one go). Or, one file at a time: paste everything in `supabase/migrations/001_book_club.sql`, and click **Run**. Then do the same with `supabase/migrations/002_ranked_choice.sql` (ranked-choice voting) `supabase/migrations/003_club_sync.sql` (syncing book clubs across devices) and `supabase/migrations/004_club_hub.sql` (shared club pages).
 3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
 ### 2. Deploy (Vercel, free)
