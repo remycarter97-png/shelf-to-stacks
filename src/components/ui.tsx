@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import { navigate } from "../lib/router";
 
 const cx = (...c: Array<string | false | undefined>) => c.filter(Boolean).join(" ");
 
@@ -8,7 +9,7 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "accent" | "outline" | "ghost" }) {
   const styles = {
-    primary: "bg-primary text-primary-foreground shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:opacity-90 active:translate-y-px active:shadow-none",
+    primary: "btn-ledge bg-primary text-primary-foreground",
     accent: "bg-accent-strong text-accent-foreground hover:opacity-90",
     outline: "border border-border bg-card text-foreground hover:bg-muted",
     ghost: "text-muted-foreground hover:text-foreground",
@@ -17,7 +18,7 @@ export function Button({
     <button
       {...props}
       className={cx(
-        "inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
         styles,
         className,
       )}
@@ -30,7 +31,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
     <input
       {...props}
       className={cx(
-        "h-12 w-full min-w-0 rounded-md border border-input bg-card px-4 text-base text-foreground placeholder:text-muted-foreground/80",
+        "h-12 w-full min-w-0 rounded-full border-[1.5px] border-input bg-card px-4 text-base text-foreground placeholder:text-muted-foreground/80",
         className,
       )}
     />
@@ -61,3 +62,24 @@ export function OutLink({ className, children, href, ...rest }: { href: string; 
 }
 
 export { cx };
+
+/** A link inside the app: a real link (so it can be opened in a new tab), routed without a reload. */
+export function AppLink({ href, className, children, ...rest }: { href: string; className?: string; children: ReactNode } & Record<string, unknown>) {
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={(e) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        const [path, hash] = href.split("#");
+        if (path && path !== window.location.pathname) navigate(path);
+        if (hash) setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" }), path && path !== window.location.pathname ? 120 : 0);
+        else if (!path || path === window.location.pathname) window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}

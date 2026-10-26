@@ -1,12 +1,11 @@
 @import "tailwindcss";
 
-/* Cozy neighborhood bookshop: sage wallpaper, a green shopfront with a striped awning,
-   paper shelf cards, raspberry book-cloth links and lamplight-mustard highlights.
+/* A tiny independent bookshop: cream paper, blush and sage, clay accents, warm brown ink.
    Colors are tokens so light and dark mode stay in step. */
 @theme inline {
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+  --radius-lg: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -25,79 +24,86 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --font-display: "Caprasimo", ui-serif, Georgia, serif;
+  --color-blush: var(--blush);
+  --color-sage: var(--sage);
+  --color-clay: var(--clay);
+  --color-butter: var(--butter);
+  --color-lavender: var(--lavender);
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
   --font-sans: "Nunito", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-script: "Caveat", "Segoe Print", cursive;
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: #e9eddf; /* sage wallpaper */
-  --foreground: #2e3a2f; /* forest ink */
-  --card: #fffbf2; /* shelf-card paper */
-  --primary: #3e5a44; /* shopfront green */
-  --primary-foreground: #fff8ea;
-  --muted: #f3ecda; /* oat paper, for panels inside cards */
-  --muted-foreground: #5b6758;
-  --accent: #e6a73a; /* lamplight */
-  --accent-strong: #e6a73a;
-  --link: #a23b57; /* raspberry book cloth */
-  --accent-foreground: #2e2a1e;
+  --radius: 0.9rem;
+  --background: #fdf8f3; /* cream paper */
+  --foreground: #4a3728; /* warm brown ink */
+  --card: #fffcf8;
+  --primary: #f2c4c4; /* blush */
+  --primary-foreground: #4a3728;
+  --primary-edge: #e3a7a7; /* the little ledge under blush buttons */
+  --muted: #f7eee4;
+  --muted-foreground: #5f5753; /* soft charcoal */
+  --accent: #d4a59a; /* soft clay */
+  --accent-strong: #c4846f;
+  --link: #a0614f; /* clay, deep enough to read */
+  --accent-foreground: #3a2618;
   --destructive: #b3402f;
-  --border: #d8d2bc;
-  --input: #cdc6ad;
-  --ring: #a23b57;
-  --success: #3d7a48;
+  --border: #eadfd4;
+  --input: #dccfc2;
+  --ring: #a0614f;
+  --success: #4d7a45;
   --warning: #93640f;
-  --info: #3d6a8a;
-  /* The shopfront */
-  --fascia: #3e5a44;
-  --fascia-ink: #fff8ea;
-  --fascia-muted: #d6e2cf;
-  --awning-a: #fff8ea;
-  --awning-b: #c9637c;
-  --shelf: #c9a777;
-  --spine-1: #a23b57;
-  --spine-2: #3e5a44;
-  --spine-3: #e6a73a;
-  --spine-4: #7f9ab0;
-  --spine-5: #d98c6a;
-  --wallpaper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='%23c9d3bb' fill-opacity='.55'%3E%3Cpath d='M14 9c2.5 1.6 3 4.4 0 7-3-2.6-2.5-5.4 0-7z'/%3E%3Cpath d='M14 16c-.9-2.6-3.1-3.4-5.4-2.6.6 2.4 2.8 3.4 5.4 2.6zM14 16c.9-2.6 3.1-3.4 5.4-2.6-.6 2.4-2.8 3.4-5.4 2.6z'/%3E%3Ccircle cx='42' cy='42' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
+  --info: #4f7090;
+  /* Illustration colors */
+  --blush: #f2c4c4;
+  --blush-soft: #f9dcdc;
+  --sage: #a8c3a0;
+  --sage-soft: #e3ebe0;
+  --sage-deep: #7f9f77;
+  --clay: #d4a59a;
+  --butter: #f8e9c9;
+  --lavender: #d9cde6;
+  --lavender-soft: #ece4f3;
+  --ink: #4a3728;
+  --header-bg: rgb(253 248 243 / 0.72);
+  --header-bg-solid: rgb(253 248 243 / 0.96);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .29 0 0 0 0 .22 0 0 0 0 .16 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --shadow-soft: 0 6px 20px rgb(74 55 40 / 0.08), 0 1px 3px rgb(74 55 40 / 0.06);
+  --shadow-lift: 0 14px 32px rgb(74 55 40 / 0.13), 0 2px 6px rgb(74 55 40 / 0.08);
   color-scheme: light;
 }
 
-/* Dark mode: the shop after closing, lit by a desk lamp. */
+/* Dark mode: the shop after closing, by candlelight. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1b231d;
-    --foreground: #f2ead8;
-    --card: #243027;
-    --primary: #a9c7a6;
-    --primary-foreground: #1b231d;
-    --muted: #2c3a30;
-    --muted-foreground: #b8c2b0;
-    --accent: #f0b44c;
-    --accent-strong: #f0b44c;
-    --link: #f2a3b7;
-    --accent-foreground: #231c0e;
+    --background: #221a15;
+    --foreground: #f3e6da;
+    --card: #2d231c;
+    --primary: #e8a9a9;
+    --primary-foreground: #2a1d16;
+    --primary-edge: #b97f7f;
+    --muted: #362a22;
+    --muted-foreground: #c9b8aa;
+    --accent: #c99586;
+    --accent-strong: #e2a995;
+    --link: #f0b8a8;
+    --accent-foreground: #2a1d16;
     --destructive: #f08a7a;
-    --border: #3a493e;
-    --input: #46564b;
-    --ring: #f2a3b7;
-    --success: #8fd19a;
+    --border: #46372c;
+    --input: #554336;
+    --ring: #f0b8a8;
+    --success: #9fcf95;
     --warning: #f0c060;
-    --info: #8dbbe0;
-    --fascia: #2a3b2e;
-    --fascia-ink: #f6ead0;
-    --fascia-muted: #b9c8b4;
-    --awning-a: #d9ccb0;
-    --awning-b: #8e4257;
-    --shelf: #6b5236;
-    --spine-1: #b8566f;
-    --spine-2: #5f8466;
-    --spine-3: #d9a345;
-    --spine-4: #6e8aa3;
-    --spine-5: #c07a5c;
-    --wallpaper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='%23324036' fill-opacity='.8'%3E%3Cpath d='M14 9c2.5 1.6 3 4.4 0 7-3-2.6-2.5-5.4 0-7z'/%3E%3Cpath d='M14 16c-.9-2.6-3.1-3.4-5.4-2.6.6 2.4 2.8 3.4 5.4 2.6zM14 16c.9-2.6 3.1-3.4 5.4-2.6-.6 2.4-2.8 3.4-5.4 2.6z'/%3E%3Ccircle cx='42' cy='42' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
+    --info: #9dbfe0;
+    --blush-soft: #4a3332;
+    --sage-soft: #2f3a2c;
+    --lavender-soft: #3a3242;
+    --header-bg: rgb(34 26 21 / 0.72);
+    --header-bg-solid: rgb(34 26 21 / 0.96);
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .9 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    --shadow-soft: 0 6px 20px rgb(0 0 0 / 0.25), 0 1px 3px rgb(0 0 0 / 0.2);
+    --shadow-lift: 0 14px 32px rgb(0 0 0 / 0.35), 0 2px 6px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
 }
@@ -115,8 +121,7 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    background-image: var(--wallpaper);
-    background-size: 56px 56px;
+    background-image: var(--grain);
     line-height: 1.6;
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
@@ -126,9 +131,8 @@
   h3,
   .font-display {
     font-family: var(--font-display);
-    font-weight: 400; /* Caprasimo has one weight; never fake a bolder one */
-    font-synthesis: none;
-    letter-spacing: 0;
+    font-weight: 450;
+    letter-spacing: -0.01em;
   }
   :focus-visible {
     outline: 2px solid var(--color-ring);
@@ -162,43 +166,88 @@
   }
 }
 
-/* The shopfront: a green sign board with a scalloped, striped awning hanging below it.
-   Header contents keep using the normal tokens, re-pointed to light-on-green here. */
-.shop-header {
-  --foreground: var(--fascia-ink);
-  --muted-foreground: var(--fascia-muted);
-  --border: color-mix(in srgb, var(--fascia-ink) 38%, transparent);
-  --muted: color-mix(in srgb, var(--fascia-ink) 12%, transparent);
-  --card: color-mix(in srgb, var(--fascia-ink) 8%, transparent); /* outline buttons on the sign stay readable */
-  --primary: var(--accent);
-  --primary-foreground: var(--link);
-  position: relative;
-  z-index: 1;
-  margin-bottom: 1.75rem;
-  background: var(--fascia);
-  color: var(--fascia-ink);
+/* Soft sticky header: see-through over the page, more solid once you scroll. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  background: var(--header-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background-color 0.3s, box-shadow 0.3s;
 }
-.shop-header::after {
-  content: "";
-  position: absolute;
-  inset: 100% 0 auto 0;
-  height: 1.75rem;
-  background: repeating-linear-gradient(90deg, var(--awning-a) 0 1.75rem, var(--awning-b) 1.75rem 3.5rem);
-  /* A straight band, then one scallop per stripe */
-  -webkit-mask:
-    linear-gradient(#000 0 0) top / 100% 0.9rem no-repeat,
-    radial-gradient(circle at 50% 0.9rem, #000 0.86rem, transparent calc(0.86rem + 0.5px)) top left / 1.75rem 1.75rem repeat-x;
-  mask:
-    linear-gradient(#000 0 0) top / 100% 0.9rem no-repeat,
-    radial-gradient(circle at 50% 0.9rem, #000 0.86rem, transparent calc(0.86rem + 0.5px)) top left / 1.75rem 1.75rem repeat-x;
-  pointer-events: none;
+.site-header.scrolled {
+  background: var(--header-bg-solid);
+  box-shadow: 0 4px 18px rgb(74 55 40 / 0.07);
 }
-.shop-header::before {
-  /* the awning's soft shadow on the wall */
-  content: "";
-  position: absolute;
-  inset: calc(100% + 0.5rem) 0 auto 0;
-  height: 1.6rem;
-  background: radial-gradient(ellipse at 50% 0, rgb(0 0 0 / 0.12), transparent 70%) top left / 1.75rem 1.6rem repeat-x;
-  pointer-events: none;
+
+.font-script {
+  font-family: var(--font-script);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Cards that lift a little under the pointer. */
+.lift {
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+/* Blush buttons sit on a little ledge. */
+.btn-ledge {
+  box-shadow: 0 4px 0 var(--primary-edge);
+}
+.btn-ledge:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--primary-edge);
+}
+.btn-ledge:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--primary-edge);
+}
+
+.float-doodle {
+  animation: drift 6s ease-in-out infinite;
+}
+@keyframes drift {
+  50% {
+    transform: translateY(-10px) rotate(4deg);
+  }
+}
+
+/* Room under page content for the phone tab bar. */
+.tabbar-space {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .tabbar-space {
+    padding-bottom: 0;
+  }
+}
+
+/* Journal article text */
+.prose-cozy p {
+  margin-top: 1.1em;
+}
+.prose-cozy h2 {
+  margin-top: 1.8em;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.prose-cozy ul {
+  margin-top: 1em;
+  list-style: disc;
+  padding-left: 1.3em;
+}
+.prose-cozy li {
+  margin-top: 0.4em;
+}
+.prose-cozy li::marker {
+  color: var(--accent);
 }

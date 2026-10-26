@@ -8,7 +8,9 @@ import { LibraryRequest } from "./LibraryRequest";
 import { clearAll, load, requestPersistentStorage, save } from "../lib/storage";
 import { timeAgo } from "../lib/format";
 import { BookClubPanel, type ClubPick } from "./BookClubPanel";
-import { Logo } from "./Logo";
+import { SiteFooter, SiteHeader } from "./SiteChrome";
+import { LibraryStack, ReadingNook } from "./Illustrations";
+import { JournalTeaser, usePageTitle } from "./JournalPages";
 import { Recommendations } from "./Recommendations";
 import { InstallLink } from "./InstallPrompt";
 import { navigate, takeShelfScroll } from "../lib/router";
@@ -20,6 +22,7 @@ type ShelfOrigin = "goodreads" | "file";
 type SavedShelf = { userId: string; books: Book[]; at: number; origin?: ShelfOrigin; fileName?: string; fileSource?: "storygraph" | "goodreads" };
 
 export function Home() {
+  usePageTitle("");
   const [userId, setUserId] = useState(() => load("userId", ""));
   // Boston Public Library is the only library for now; readers elsewhere can request theirs.
   const [libId, setLibId] = useState(() => savedLibrary().id);
@@ -97,34 +100,30 @@ export function Home() {
 
   return (
     <div className="min-h-screen">
-      <header className="shop-header safe-top">
-        <div className="safe-x mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
-          <Logo />
-          <nav className="flex items-center gap-4 text-sm">
-            <InstallLink className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 font-medium text-foreground hover:bg-muted">
-              <PhoneIcon />
-              Get the app
-            </InstallLink>
-            <button type="button" onClick={() => navigate("/club")} className="hidden whitespace-nowrap py-2 text-muted-foreground hover:text-foreground sm:inline">
-              Book club
-            </button>
-            <a href="#about" className="hidden whitespace-nowrap py-2 text-muted-foreground hover:text-foreground sm:inline">
-              How it works
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <main className="safe-x mx-auto max-w-6xl pb-12">
-        <section className="pt-10 sm:pt-14">
+      <main className="safe-x mx-auto max-w-6xl">
+        <section className="grid items-center gap-x-10 pt-6 sm:pt-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="relative mx-auto mb-2 w-full max-w-[19rem] sm:max-w-sm lg:order-2 lg:mb-0 lg:max-w-none">
+            <ReadingNook className="h-auto w-full" />
+            <p className="absolute right-0 top-[4%] hidden rotate-3 items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 text-sm sm:flex" style={{ boxShadow: "var(--shadow-soft)" }}>
+              <span className="h-2.5 w-2.5 rounded-full bg-success" aria-hidden />
+              <span>
+                <b className="font-extrabold">Live</b> Boston Public Library availability
+              </span>
+            </p>
+          </div>
+          <div className="min-w-0 lg:order-1">
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-sm font-semibold text-muted-foreground">
             <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
             Your List × Your Library
           </p>
-          <h1 className="mt-4 max-w-[14ch] font-display text-5xl leading-[1.08] md:text-6xl">From your shelf to the stacks.</h1>
-          <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-            Bring your Goodreads or StoryGraph want-to-read list and we'll walk it against your library's catalog — no
-            more searching one book at a time.
+          <h1 className="mt-4 max-w-[15ch] font-display text-[2.7rem] font-normal leading-[1.05] sm:text-6xl lg:text-[4.2rem]">
+            Find your next favorite story <em className="text-link">at the library</em>
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Bring your Goodreads or StoryGraph want-to-read list. We'll check every book against your library's catalog
+            and show you what's on the shelf right now.
           </p>
 
           <div role="tablist" aria-label="Where your list comes from" className="mt-7 inline-flex rounded-md border border-border/60 bg-card p-1 text-sm">
@@ -277,6 +276,7 @@ export function Home() {
               </label>
             </p>
           )}
+          </div>
         </section>
 
         {books.length > 0 && !library && (
@@ -312,6 +312,8 @@ export function Home() {
           </p>
         )}
 
+        <JournalTeaser />
+
         <About
           onUpload={() => {
             switchMode("file");
@@ -320,40 +322,7 @@ export function Home() {
         />
       </main>
 
-      <BookShelf />
-      <footer className="safe-bottom">
-        <p className="safe-x mx-auto max-w-6xl py-8 text-sm leading-relaxed text-muted-foreground">
-          Made for library readers. Catalog data via BiblioCommons · Ebooks via Libby · Shelf data via Goodreads or your StoryGraph export.
-        </p>
-      </footer>
-    </div>
-  );
-}
-
-/** A little shelf of book spines to close the page. Decorative only. */
-function BookShelf() {
-  // width, height, color, band offset (0 = none)
-  const spines: Array<[number, number, number, number]> = [
-    [14, 46, 1, 8], [18, 54, 2, 10], [12, 40, 3, 0], [16, 50, 4, 9], [20, 44, 5, 8], [13, 52, 1, 0], [17, 38, 3, 7],
-    [15, 48, 2, 11], [19, 42, 4, 0], [12, 50, 5, 9], [16, 46, 1, 8], [14, 36, 2, 0], [18, 52, 3, 10], [13, 44, 4, 8],
-  ];
-  let x = 0;
-  return (
-    <div className="safe-x mx-auto max-w-6xl" aria-hidden>
-      <svg viewBox="0 0 260 62" className="block h-16 w-auto" role="presentation">
-        {spines.map(([w, h, c, band], i) => {
-          const sx = x;
-          x += w + 2;
-          const lean = i === 6 ? "rotate(8 " + (sx + w) + " 56)" : undefined;
-          return (
-            <g key={i} transform={lean}>
-              <rect x={sx} y={56 - h} width={w} height={h} rx={2} style={{ fill: `var(--spine-${c})` }} />
-              {band > 0 && <rect x={sx + 2} y={56 - h + band} width={w - 4} height={2.5} rx={1} style={{ fill: "var(--card)", opacity: 0.7 }} />}
-            </g>
-          );
-        })}
-        <rect x={0} y={56} width={260} height={6} rx={2} style={{ fill: "var(--shelf)" }} />
-      </svg>
+      <SiteFooter />
     </div>
   );
 }
@@ -496,40 +465,71 @@ function HelpHint() {
 
 function About({ onUpload }: { onUpload: () => void }) {
   return (
-    <section id="about" className="mt-16 border-t border-border/60 pt-10 text-sm leading-relaxed text-muted-foreground">
-      <h2 className="font-display text-xl text-foreground">How it works</h2>
-      <p className="mt-2">
-        We read your public Goodreads Want to Read shelf (or the to-read books in a StoryGraph export), then look each
-        book up in Boston Public Library's catalog for live availability. Borrow somewhere else? Use “Request a
-        different library” and we'll look into adding it.
-      </p>
-      <p className="mt-2">
-        No account needed. Your list, library, last results, book club shortlist and display choices are saved only on
-        this device, so the app opens instantly next time and still works offline.{" "}
-        <button
-          type="button"
-          className="underline underline-offset-2 hover:text-foreground"
-          onClick={() => {
-            if (window.confirm("Remove your saved list, library and results from this device?")) {
-              clearAll();
-              window.location.reload();
-            }
-          }}
-        >
-          Clear saved data
-        </button>
-      </p>
-      <InstallLink className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
-        <PhoneIcon />
-        Add Shelf to Stacks to your home screen
-      </InstallLink>
-      <p className="mt-8 border-t border-border/60 pt-6">
-        <b className="font-medium text-foreground">Goodreads profiles must be public.</b> Goodreads closed its public API,
-        so we can only read public Want to Read shelves.{" "}
-        <button type="button" onClick={onUpload} className="text-link underline underline-offset-2">
-          Private profile? Upload your Goodreads export
-        </button>
-      </p>
+    <section id="about" className="mt-24 scroll-mt-24">
+      <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
+        <LibraryStack />
+        <div>
+          <p className="font-script text-2xl text-link">our little corner</p>
+          <blockquote className="font-display text-[1.75rem] italic leading-snug md:text-[2.1rem]">
+            “We're a small team who believe books should feel like a hug.”
+          </blockquote>
+          <p className="mt-4 max-w-lg text-[1.05rem] leading-relaxed text-muted-foreground">
+            Shelf to Stacks started with one long want-to-read list and a library card. It checks your whole list against
+            Boston Public Library in one go, keeps everything on your device, and helps your book club pick its next read
+            with a ranked vote.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2.5 text-sm font-bold">
+            {["♡ No account needed", "Live library availability", "Book club votes"].map((f) => (
+              <span key={f} className="rounded-full border-[1.5px] border-border bg-card px-4 py-2">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-14 grid gap-6 text-[0.95rem] leading-relaxed text-muted-foreground md:grid-cols-2">
+        <div className="rounded-[1.4rem] bg-card p-6" style={{ boxShadow: "var(--shadow-soft)" }}>
+          <h2 className="font-display text-2xl text-foreground">How it works</h2>
+          <p className="mt-2">
+            We read your public Goodreads Want to Read shelf (or the to-read books in a StoryGraph export), then look each
+            book up in Boston Public Library's catalog for live availability. Borrow somewhere else? Use “Request a
+            different library” and we'll look into adding it.
+          </p>
+          <p className="mt-3">
+            <b className="text-foreground">Goodreads profiles must be public.</b> Goodreads closed its public API, so we
+            can only read public Want to Read shelves.{" "}
+            <button type="button" onClick={onUpload} className="font-semibold text-link underline underline-offset-2">
+              Private profile? Upload your Goodreads export
+            </button>
+          </p>
+        </div>
+        <div className="rounded-[1.4rem] bg-card p-6" style={{ boxShadow: "var(--shadow-soft)" }}>
+          <h2 className="font-display text-2xl text-foreground">Your data stays with you</h2>
+          <p className="mt-2">
+            No account needed. Your list, library, last results, book club shortlist and display choices are saved only on
+            this device, so the app opens instantly next time and still works offline.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <InstallLink className="btn-ledge inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
+              <PhoneIcon />
+              Add to your home screen
+            </InstallLink>
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-foreground"
+              onClick={() => {
+                if (window.confirm("Remove your saved list, library and results from this device?")) {
+                  clearAll();
+                  window.location.reload();
+                }
+              }}
+            >
+              Clear saved data
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

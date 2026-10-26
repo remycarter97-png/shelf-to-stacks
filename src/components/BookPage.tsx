@@ -19,7 +19,7 @@ import { STALE_MS, loadSaved, useAvailability } from "../lib/useAvailability";
 import { timeAgo } from "../lib/format";
 import type { ClubPick } from "./BookClubPanel";
 import { Editions, STATUS, copiesLine } from "./BookCard";
-import { Logo } from "./Logo";
+import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { MoreLikeThis } from "./MoreLikeThis";
 import { MoreWays } from "./MoreWays";
 import { OutLink, cx } from "./ui";
@@ -47,19 +47,15 @@ export function BookPage({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen">
-      <header className="shop-header safe-top">
-        <div className="safe-x mx-auto flex h-16 max-w-4xl items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={goBack}
-            className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-full border border-border px-3 text-sm font-medium hover:bg-muted"
-          >
-            ← My shelf
-          </button>
-          <Logo />
-        </div>
-      </header>
-      <main className="safe-x mx-auto max-w-4xl pb-16">
+      <SiteHeader width="max-w-4xl" />
+      <main className="safe-x mx-auto max-w-4xl">
+        <button
+          type="button"
+          onClick={goBack}
+          className="mt-5 inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-full border-[1.5px] border-border bg-card px-3.5 text-sm font-bold hover:bg-muted"
+        >
+          ← My shelf
+        </button>
         {!book ? (
           <NotOnList />
         ) : !library ? (
@@ -74,6 +70,7 @@ export function BookPage({ id }: { id: string }) {
           <BookDetails key={book.id} book={book} books={books} library={library} />
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

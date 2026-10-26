@@ -177,7 +177,7 @@ export function InstallPrompt() {
 
   if (!show) return null;
   return (
-    <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 px-3 pb-3">
+    <div className="safe-bottom fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 px-3 pb-3 md:bottom-0">
       <div className="mx-auto flex max-w-xl items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-lg">
         <img src="/apple-touch-icon.png" alt="" className="h-10 w-10 rounded-md" />
         <p className="min-w-0 flex-1 text-sm leading-snug">

@@ -1,2 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <rect width="512" height="512" rx="112" fill="#3e5a44"/><rect x="133.60000000000002" y="324" width="272" height="74.8" rx="17" fill="#c9637c" /><rect x="160.8" y="242.4" width="238" height="74.8" rx="17" fill="#e6a73a" /><rect x="120.00000000000001" y="160.8" width="258.4" height="74.8" rx="17" fill="#fff8ea" /><rect x="160.8" y="189.7" width="146.2" height="17" rx="17" fill="#3e5a44" opacity="0.5"/><path d="M310.4 160.8V99.60000000000001l23.8 18.7 23.8-18.7V160.8z" fill="#c9637c"/></svg>
+    <rect width="512" height="512" rx="112" fill="#f2c4c4"/><g transform="translate(35.84 45.41217391304349) scale(9.572173913043478)">
+    <path d="M15 13l2.5-6 3 5" fill="#4a3728"/><path d="M26 12l2.6-5 2.4 6" fill="#4a3728"/>
+    <path d="M14 16c0-5 4-8 9-8s9 3 9 8z" fill="#4a3728"/>
+    <circle cx="19.5" cy="13.5" r="1" fill="#fdf8f3"/><circle cx="26.5" cy="13.5" r="1" fill="#fdf8f3"/>
+    <path d="M3 17c6-2 13-1.5 20 2 7-3.5 14-4 20-2v18c-6-2-13-1.5-20 2-7-3.5-14-4-20-2z" fill="#fffcf8" stroke="#4a3728" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M23 19v18" stroke="#4a3728" stroke-width="2"/>
+    <path d="M8 22.5c3-.8 6-.6 10 .6M8 27c3-.8 6-.6 10 .6M28 23c4-1.2 7-1.4 10-.6M28 27.6c4-1.2 7-1.4 10-.6" stroke="#d4a59a" stroke-width="1.6" stroke-linecap="round"/>
+  </g></svg>

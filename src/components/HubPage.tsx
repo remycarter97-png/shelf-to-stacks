@@ -25,7 +25,7 @@ import {
 import { navigate } from "../lib/router";
 import { load, save } from "../lib/storage";
 import { supabase } from "../lib/supabase";
-import { Logo } from "./Logo";
+import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
 type Flash = { text: string; ok: boolean } | null;
@@ -137,20 +137,18 @@ export function HubPage({ hubId }: { hubId: string }) {
 
   return (
     <div className="min-h-screen">
-      <header className="shop-header safe-top">
-        <div className="safe-x mx-auto flex h-14 max-w-4xl items-center justify-between gap-3">
-          <button type="button" onClick={() => navigate("/")} aria-label="Shelf to Stacks home">
-            <Logo />
-          </button>
-          {data && (
-            <Button variant="outline" className="min-h-9 px-3" onClick={() => shareOrCopy(memberLink(hubId), data.name, setCopied, "member")}>
+      <SiteHeader
+        width="max-w-4xl"
+        actions={
+          data && (
+            <Button variant="outline" className="min-h-10 px-3.5" onClick={() => shareOrCopy(memberLink(hubId), data.name, setCopied, "member")}>
               {copied === "member" ? "Link copied!" : "Share club link"}
             </Button>
-          )}
-        </div>
-      </header>
+          )
+        }
+      />
 
-      <main className="safe-x safe-bottom mx-auto max-w-4xl pb-20 pt-6">
+      <main className="safe-x mx-auto max-w-4xl pt-6">
         {!supabase ? (
           <p className="mt-8 text-muted-foreground">Book club features aren't set up on this site yet.</p>
         ) : loading ? (
@@ -272,6 +270,7 @@ export function HubPage({ hubId }: { hubId: string }) {
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { supabase } from "../lib/supabase";
 import { timeAgo } from "../lib/format";
 import { useAvailability } from "../lib/useAvailability";
 import { formatCode, useClubSync } from "../lib/clubSync";
-import { Logo } from "./Logo";
+import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { SharedClubPanel } from "./SharedClubPanel";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
@@ -153,18 +153,9 @@ export function ClubPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="shop-header safe-top">
-        <div className="safe-x mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
-          <button type="button" onClick={() => navigate("/")} aria-label="Shelf to Stacks home">
-            <Logo />
-          </button>
-          <button type="button" onClick={() => navigate("/")} className="py-2 text-sm text-muted-foreground hover:text-foreground">
-            ← My shelf
-          </button>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <main className="safe-x safe-bottom mx-auto max-w-6xl pb-16 pt-8">
+      <main className="safe-x mx-auto max-w-6xl pt-8">
         <p className="text-sm font-bold text-muted-foreground">Book club</p>
         <h1 className="mt-2 font-display text-4xl font-medium leading-tight md:text-5xl">Find books your club has in common</h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
@@ -337,6 +328,7 @@ export function ClubPage() {
           </section>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }
