@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { POSTS, TINTS, findPost, formatPostDate, type Post } from "../lib/journal";
 import { JournalArt } from "./Illustrations";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
-import { AppLink, cx } from "./ui";
+import { AppLink, OutLink, cx } from "./ui";
+import { parseInline } from "../../shared/journalMarkdown";
 
 export function usePageTitle(title: string) {
   useEffect(() => {
@@ -118,11 +119,15 @@ export function PostPage({ slug }: { slug: string }) {
                   {b.h}
                 </h2>
               ) : "p" in b ? (
-                <p key={i}>{b.p}</p>
+                <p key={i}>
+                  <Rich text={b.p} />
+                </p>
               ) : (
                 <ul key={i}>
                   {b.ul.map((li) => (
-                    <li key={li}>{li}</li>
+                    <li key={li}>
+                      <Rich text={li} />
+                    </li>
                   ))}
                 </ul>
               ),
@@ -147,5 +152,32 @@ export function PostPage({ slug }: { slug: string }) {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+/** A line of post text with **bold**, *italic* and [links](…). */
+function Rich({ text }: { text: string }) {
+  return (
+    <>
+      {parseInline(text).map((x, i) =>
+        x.href ? (
+          x.href.startsWith("/") ? (
+            <AppLink key={i} href={x.href} className="font-semibold text-link underline underline-offset-2">
+              {x.t}
+            </AppLink>
+          ) : (
+            <OutLink key={i} href={x.href} className="font-semibold text-link underline underline-offset-2">
+              {x.t}
+            </OutLink>
+          )
+        ) : x.b ? (
+          <strong key={i}>{x.t}</strong>
+        ) : x.i ? (
+          <em key={i}>{x.t}</em>
+        ) : (
+          <span key={i}>{x.t}</span>
+        ),
+      )}
+    </>
   );
 }
