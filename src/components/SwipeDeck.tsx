@@ -3,62 +3,65 @@ import { load, save } from "../lib/storage";
 import { navigate, takeShelfScroll } from "../lib/router";
 import { cx } from "./ui";
 
-export type SwipeDir = "left" | "right";
+/** "next" = the card leaves to the left; "prev" = it leaves to the right. */
+export type Flip = "next" | "prev";
 
 /**
- * A Tinder-style card for the book page. Drag (or use the buttons / arrow keys):
- * right = add to the book club shortlist, left = not now. Either way the next book in the
- * shelf's current order comes up. Rewind undoes the last swipe.
+ * A swipeable book card for the book page, in the shelf's current order.
+ * Swipe left (or →, or Next) for the next book; swipe right (or ←, or Previous) to go back.
+ * The heart adds or removes the book from the book club shortlist without moving on.
  */
 export function SwipeDeck({
   children,
   nextPreview,
+  prevPreview,
   position,
   total,
   label,
+  hasPrev,
   picked,
-  canRewind,
-  onSwipe,
-  onRewind,
+  onFlip,
+  onTogglePick,
 }: {
   children: ReactNode;
   nextPreview: ReactNode;
+  prevPreview: ReactNode;
   position: number;
   total: number;
   label: string;
+  hasPrev: boolean;
   picked: boolean;
-  canRewind: boolean;
-  onSwipe: (dir: SwipeDir) => void;
-  onRewind: () => void;
+  onFlip: (to: Flip) => void;
+  onTogglePick: () => void;
 }) {
   const card = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; t: number; id: number; axis: "h" | "v" | null } | null>(null);
   const dragged = useRef(false);
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [leaving, setLeaving] = useState<SwipeDir | null>(null);
+  const [leaving, setLeaving] = useState<Flip | null>(null);
   const [hint, setHint] = useState(() => !load("swipe-hint-seen", false));
   const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const fly = (dir: SwipeDir) => {
-    if (leaving) return;
+  const flip = (to: Flip) => {
+    if (leaving || (to === "prev" && !hasPrev)) return;
     if (hint) {
       save("swipe-hint-seen", true);
       setHint(false);
     }
-    setLeaving(dir);
-    setTimeout(() => onSwipe(dir), reduce ? 0 : 240);
+    setLeaving(to);
+    setTimeout(() => onFlip(to), reduce ? 0 : 220);
   };
-  const flyRef = useRef(fly);
-  flyRef.current = fly;
+  const flipRef = useRef(flip);
+  flipRef.current = flip;
 
-  // Arrow keys: ← not now, → shortlist (ignored while typing).
+  // Arrow keys: → next book, ← previous book (ignored while typing).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (e.altKey || e.ctrlKey || e.metaKey || t.closest("input, textarea, select, [contenteditable]")) return;
-      if (e.key === "ArrowRight") flyRef.current("right");
-      if (e.key === "ArrowLeft") flyRef.current("left");
+      if (e.key === "ArrowRight") flipRef.current("next");
+      if (e.key === "ArrowLeft") flipRef.current("prev");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -71,12 +74,16 @@ export function SwipeDeck({
   };
 
   const width = card.current?.offsetWidth ?? 360;
-  const progress = Math.min(1, Math.abs(dx) / 120);
-  const likeOpacity = leaving === "right" ? 1 : Math.max(0, Math.min(1, dx / 90));
-  const nopeOpacity = leaving === "left" ? 1 : Math.max(0, Math.min(1, -dx / 90));
+  // Going back from the first book: the card resists instead of following the finger.
+  const shown = dx > 0 && !hasPrev ? dx * 0.25 : dx;
+  const progress = Math.min(1, Math.abs(shown) / 120);
+  const nextOpacity = leaving === "next" ? 1 : Math.max(0, Math.min(1, -shown / 90));
+  const prevOpacity = leaving === "prev" ? 1 : Math.max(0, Math.min(1, shown / 90));
   const transform = leaving
-    ? `translateX(${(leaving === "right" ? 1 : -1) * Math.round(width * 1.6)}px) rotate(${leaving === "right" ? 22 : -22}deg)`
-    : `translateX(${dx}px) rotate(${dx / 18}deg)`;
+    ? `translateX(${(leaving === "next" ? -1 : 1) * Math.round(width * 1.5)}px) rotate(${leaving === "next" ? -14 : 14}deg)`
+    : `translateX(${shown}px) rotate(${shown / 30}deg)`;
+  // The card underneath is the one you're heading towards.
+  const under = shown > 0 || leaving === "prev" ? prevPreview : nextPreview;
 
   return (
     <div className="pt-6">
@@ -87,13 +94,12 @@ export function SwipeDeck({
         </p>
         {hint && (
           <p className="rounded-full bg-butter px-3 py-1 text-xs font-bold text-[#4a3728]">
-            Swipe right ♡ to shortlist · left to skip
+            Swipe to flip through your books · ♡ to shortlist
           </p>
         )}
       </div>
 
       <div className="relative">
-        {/* The next book, waiting underneath */}
         <div
           aria-hidden
           className="absolute inset-0 overflow-hidden rounded-[1.6rem] border border-border/70 bg-card p-5 sm:p-6"
@@ -103,7 +109,7 @@ export function SwipeDeck({
             opacity: 0.85,
           }}
         >
-          {nextPreview}
+          {under}
         </div>
 
         <div
@@ -136,7 +142,9 @@ export function SwipeDeck({
             const speed = Math.abs(mx) / Math.max(1, performance.now() - d.t);
             drag.current = null;
             setDragging(false);
-            if (Math.abs(mx) > Math.min(140, width * 0.3) || (speed > 0.5 && Math.abs(mx) > 50)) fly(mx > 0 ? "right" : "left");
+            const far = Math.abs(mx) > Math.min(120, width * 0.28) || (speed > 0.5 && Math.abs(mx) > 50);
+            if (far && mx < 0) flip("next");
+            else if (far && mx > 0 && hasPrev) flip("prev");
             else setDx(0);
           }}
           onPointerCancel={reset}
@@ -156,49 +164,48 @@ export function SwipeDeck({
           )}
           style={{
             transform,
-            transition: dragging ? "none" : leaving ? "transform 0.24s ease-in" : "transform 0.35s cubic-bezier(.2,.9,.25,1.2)",
+            transition: dragging ? "none" : leaving ? "transform 0.22s ease-in" : "transform 0.35s cubic-bezier(.2,.9,.25,1.2)",
             boxShadow: "var(--shadow-lift)",
           }}
         >
-          <Stamp side="left" opacity={likeOpacity} className="border-[#d9777f] text-[#c25b66]">
-            {picked ? "Still keen ♡" : "Shortlist ♡"}
-          </Stamp>
-          <Stamp side="right" opacity={nopeOpacity} className="border-[#8fa98a] text-[#5f7d59]">
-            Not now
-          </Stamp>
+          <EdgeLabel side="right" opacity={nextOpacity}>
+            Next →
+          </EdgeLabel>
+          <EdgeLabel side="left" opacity={prevOpacity}>
+            ← Back
+          </EdgeLabel>
           {children}
         </div>
       </div>
 
       <div className="mt-6 flex items-end justify-center gap-5">
-        <RoundButton label="Rewind" size="sm" disabled={!canRewind || !!leaving} onClick={onRewind}>
-          <path d="M9 7H5V3" />
-          <path d="M5.5 7A8 8 0 1 1 4 12" />
+        <RoundButton label="Previous" size="sm" disabled={!hasPrev || !!leaving} onClick={() => flip("prev")}>
+          <path d="M15 5l-7 7 7 7" strokeWidth="2.4" />
         </RoundButton>
-        <RoundButton label="Not now" disabled={!!leaving} onClick={() => fly("left")} tone="sage">
-          <path d="M7 7l10 10M17 7 7 17" strokeWidth="2.6" />
-        </RoundButton>
-        <RoundButton label={picked ? "Keep" : "Shortlist"} disabled={!!leaving} onClick={() => fly("right")} tone="blush">
+        <RoundButton label={picked ? "On shortlist" : "Shortlist"} pressed={picked} onClick={onTogglePick} tone="blush">
           <path
             d="M12 20s-7-4.4-9.2-8.6C1.3 8.5 3 5 6.4 5c2 0 3.5 1.2 4.4 2.6h2.4C14.1 6.2 15.6 5 17.6 5 21 5 22.7 8.5 21.2 11.4 19 15.6 12 20 12 20z"
-            fill="#e48f8f"
-            stroke="none"
+            fill={picked ? "#e48f8f" : "none"}
+            stroke="#e48f8f"
+            strokeWidth="2"
           />
         </RoundButton>
+        <RoundButton label="Next" size="sm" disabled={!!leaving} onClick={() => flip("next")}>
+          <path d="M9 5l7 7-7 7" strokeWidth="2.4" />
+        </RoundButton>
       </div>
-      <p className="mt-2 hidden text-center text-xs text-muted-foreground sm:block">Tip: use the ← and → keys</p>
+      <p className="mt-2 hidden text-center text-xs text-muted-foreground sm:block">Tip: use the ← and → keys to flip through books</p>
     </div>
   );
 }
 
-function Stamp({ side, opacity, className, children }: { side: "left" | "right"; opacity: number; className: string; children: ReactNode }) {
+function EdgeLabel({ side, opacity, children }: { side: "left" | "right"; opacity: number; children: ReactNode }) {
   return (
     <span
       aria-hidden
       className={cx(
-        "pointer-events-none absolute top-5 z-10 rounded-xl border-[3px] bg-card/90 px-3 py-1 font-display text-xl font-semibold uppercase tracking-wide",
-        side === "left" ? "left-5 -rotate-12" : "right-5 rotate-12",
-        className,
+        "pointer-events-none absolute top-5 z-10 rounded-full bg-foreground px-3.5 py-1.5 text-sm font-bold text-background",
+        side === "left" ? "left-5" : "right-5",
       )}
       style={{ opacity }}
     >
@@ -211,13 +218,15 @@ function RoundButton({
   label,
   size = "lg",
   tone,
+  pressed,
   disabled,
   onClick,
   children,
 }: {
   label: string;
   size?: "sm" | "lg";
-  tone?: "sage" | "blush";
+  tone?: "blush";
+  pressed?: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -229,11 +238,11 @@ function RoundButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
+        aria-pressed={pressed}
         className={cx(
-          "grid place-items-center rounded-full border-[1.5px] bg-card transition hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0",
-          size === "sm" ? "h-12 w-12 border-border text-muted-foreground" : "h-16 w-16",
-          tone === "sage" && "border-sage text-[#5f7d59]",
-          tone === "blush" && "border-primary",
+          "grid place-items-center rounded-full border-[1.5px] transition hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0",
+          size === "sm" ? "h-12 w-12 border-border bg-card text-muted-foreground" : "h-16 w-16",
+          tone === "blush" && (pressed ? "border-primary bg-primary" : "border-primary bg-card"),
         )}
         style={{ boxShadow: "var(--shadow-soft)" }}
       >
@@ -246,8 +255,8 @@ function RoundButton({
   );
 }
 
-/** Shown after the last card in the stack. */
-export function EndOfDeck({ shortlisted, canRewind, onRewind, onRestart }: { shortlisted: number; canRewind: boolean; onRewind: () => void; onRestart: () => void }) {
+/** Shown after flipping past the last card in the stack. */
+export function EndOfDeck({ shortlisted, onBack, onRestart }: { shortlisted: number; onBack: () => void; onRestart: () => void }) {
   return (
     <div className="mt-6 rounded-[1.6rem] bg-card p-8 text-center" style={{ boxShadow: "var(--shadow-soft)" }}>
       <svg viewBox="0 0 150 120" className="mx-auto w-36" aria-hidden>
@@ -262,7 +271,7 @@ export function EndOfDeck({ shortlisted, canRewind, onRewind, onRestart }: { sho
       <p className="mx-auto mt-2 max-w-md text-muted-foreground">
         {shortlisted > 0
           ? `Your book club shortlist has ${shortlisted} ${shortlisted === 1 ? "book" : "books"}. Start a ranked vote from your shelf.`
-          : "Nothing shortlisted yet. Swipe right on a book to add it to your book club shortlist."}
+          : "Nothing shortlisted yet. Tap the heart on any book to add it to your book club shortlist."}
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {shortlisted > 0 && (
@@ -278,14 +287,12 @@ export function EndOfDeck({ shortlisted, canRewind, onRewind, onRestart }: { sho
             See my shortlist
           </button>
         )}
-        <button type="button" onClick={onRestart} className="min-h-11 rounded-full border-[1.5px] border-border bg-card px-5 text-sm font-bold hover:bg-muted">
+        <button type="button" onClick={onBack} className="min-h-11 rounded-full border-[1.5px] border-border bg-card px-5 text-sm font-bold hover:bg-muted">
+          ← Back to the last book
+        </button>
+        <button type="button" onClick={onRestart} className="min-h-11 rounded-full px-4 text-sm font-bold text-link underline underline-offset-2">
           Start the stack again
         </button>
-        {canRewind && (
-          <button type="button" onClick={onRewind} className="min-h-11 rounded-full px-4 text-sm font-bold text-link underline underline-offset-2">
-            ↶ Rewind last swipe
-          </button>
-        )}
       </div>
     </div>
   );

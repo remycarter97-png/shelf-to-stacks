@@ -25,8 +25,8 @@ import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { MoreLikeThis } from "./MoreLikeThis";
 import { MoreWays } from "./MoreWays";
 import { OutLink, cx } from "./ui";
-import { EndOfDeck, SwipeDeck, type SwipeDir } from "./SwipeDeck";
-import { canRewind, loadDeck, popSwipe, pushSwipe } from "../lib/deck";
+import { EndOfDeck, SwipeDeck, type Flip } from "./SwipeDeck";
+import { loadDeck } from "../lib/deck";
 
 type SavedShelf = { books: Book[] };
 
@@ -44,9 +44,9 @@ export function BookPage({ id }: { id: string }) {
   const label = deck.ids.includes(id) ? deck.label : "Your shelf";
   const pos = ids.indexOf(id);
   const next = pos >= 0 && pos + 1 < ids.length ? books.find((b) => b.id === ids[pos + 1]) : undefined;
+  const prev = pos > 0 ? books.find((b) => b.id === ids[pos - 1]) : undefined;
   const [ended, setEnded] = useState(false);
   const [toast, setToast] = useState<{ text: string; n: number } | null>(null);
-  const [rewindable, setRewindable] = useState(canRewind);
   const show = (text: string) => setToast((t) => ({ text, n: (t?.n ?? 0) + 1 }));
   useEffect(() => {
     if (!toast) return;
@@ -55,34 +55,14 @@ export function BookPage({ id }: { id: string }) {
   }, [toast]);
 
   const go = (bookId: string) => navigate(`/book/${encodeURIComponent(bookId)}`, { replace: true });
-  const onSwipe = (dir: SwipeDir) => {
-    if (!book) return;
-    let added = false;
-    if (dir === "right") {
-      const picks = load<ClubPick[]>("club-picks", []);
-      if (!picks.some((p) => p.id === book.id)) {
-        save("club-picks", [...picks, { id: book.id, title: book.title, author: book.author, imageUrl: book.imageUrl }]);
-        added = true;
-      }
-      show(added ? `♡ ${splitSeries(book.title).main} added to your shortlist` : "♡ Already on your shortlist");
-    }
-    pushSwipe({ id: book.id, dir, added });
-    setRewindable(true);
-    if (next) go(next.id);
+  const onFlip = (to: Flip) => {
+    if (to === "prev") {
+      if (prev) go(prev.id);
+    } else if (next) go(next.id);
     else {
       setEnded(true);
       window.scrollTo(0, 0);
     }
-  };
-  const onRewind = () => {
-    const last = popSwipe();
-    setRewindable(canRewind());
-    if (!last) return;
-    if (last.added) save("club-picks", load<ClubPick[]>("club-picks", []).filter((p) => p.id !== last.id));
-    setEnded(false);
-    const b = books.find((x) => x.id === last.id);
-    if (b) show(last.added ? `↶ Back to ${splitSeries(b.title).main}, removed from shortlist` : `↶ Back to ${splitSeries(b.title).main}`);
-    if (last.id !== id) go(last.id);
   };
 
   useEffect(() => {
@@ -120,8 +100,7 @@ export function BookPage({ id }: { id: string }) {
         ) : ended ? (
           <EndOfDeck
             shortlisted={load<ClubPick[]>("club-picks", []).length}
-            canRewind={rewindable}
-            onRewind={onRewind}
+            onBack={() => setEnded(false)}
             onRestart={() => {
               setEnded(false);
               if (ids[0] !== id) go(ids[0]);
@@ -133,7 +112,7 @@ export function BookPage({ id }: { id: string }) {
             book={book}
             books={books}
             library={library}
-            deck={{ position: pos + 1, total: ids.length, label, next, canRewind: rewindable, onSwipe, onRewind }}
+            deck={{ position: pos + 1, total: ids.length, label, next, prev, onFlip, notify: show }}
           />
         )}
         {toast && (
@@ -171,9 +150,9 @@ type DeckProps = {
   total: number;
   label: string;
   next?: Book;
-  canRewind: boolean;
-  onSwipe: (dir: SwipeDir) => void;
-  onRewind: () => void;
+  prev?: Book;
+  onFlip: (to: Flip) => void;
+  notify: (text: string) => void;
 };
 
 function BookDetails({ book, books, library, deck }: { book: Book; books: Book[]; library: LibrarySystem; deck: DeckProps }) {
@@ -205,6 +184,7 @@ function BookDetails({ book, books, library, deck }: { book: Book; books: Book[]
       : [...picks, { id: book.id, title: book.title, author: book.author, imageUrl: book.imageUrl }];
     setPicks(next);
     save("club-picks", next);
+    deck.notify(picked ? `Removed ${main} from your shortlist` : `♡ ${main} added to your shortlist`);
   };
 
   // "More like this" needs the whole shelf and whatever availability is saved for it.
@@ -243,10 +223,11 @@ function BookDetails({ book, books, library, deck }: { book: Book; books: Book[]
           total={deck.total}
           label={deck.label}
           picked={picked}
-          canRewind={deck.canRewind}
-          onSwipe={deck.onSwipe}
-          onRewind={deck.onRewind}
-          nextPreview={deck.next ? <NextPreview book={deck.next} /> : <p className="font-script text-2xl text-link">that's the last one ♡</p>}
+          hasPrev={!!deck.prev}
+          onFlip={deck.onFlip}
+          onTogglePick={togglePick}
+          nextPreview={deck.next ? <NextPreview book={deck.next} heading="Up next" /> : <p className="font-script text-2xl text-link">that's the last one ♡</p>}
+          prevPreview={deck.prev ? <NextPreview book={deck.prev} heading="Previous" /> : null}
         >
         <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:gap-8">
           <BigCover src={cover} />
@@ -278,17 +259,6 @@ function BookDetails({ book, books, library, deck }: { book: Book; books: Book[]
                   Open Library ↗
                 </OutLink>
               )}
-              <button
-                type="button"
-                onClick={togglePick}
-                aria-pressed={picked}
-                className={cx(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  picked ? "border-accent-strong bg-accent-strong text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {picked ? "✓ On club shortlist" : "+ Book club shortlist"}
-              </button>
             </div>
           </div>
         </div>
@@ -474,14 +444,14 @@ function Description({ text }: { text: string }) {
   );
 }
 
-/** The next card peeking out from under the current one. */
-function NextPreview({ book }: { book: Book }) {
+/** The neighboring card peeking out from under the current one. */
+function NextPreview({ book, heading }: { book: Book; heading: string }) {
   const { main } = splitSeries(book.title);
   return (
     <div className="flex gap-5 opacity-70">
       {book.imageUrl ? <img src={book.imageUrl} alt="" className="h-28 w-20 rounded-md object-cover" /> : <div className="h-28 w-20 rounded-md bg-muted" />}
       <div className="min-w-0">
-        <p className="text-xs font-bold text-muted-foreground">Up next</p>
+        <p className="text-xs font-bold text-muted-foreground">{heading}</p>
         <p className="mt-1 font-display text-xl leading-snug">{main}</p>
         {book.author && <p className="text-sm text-muted-foreground">by {book.author}</p>}
       </div>
