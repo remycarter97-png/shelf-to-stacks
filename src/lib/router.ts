@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 
 // A handful of screens (home, book, club, vote), so a tiny router is enough.
-export function navigate(path: string) {
-  window.history.pushState({}, "", path);
+export function navigate(path: string, opts: { replace?: boolean } = {}) {
+  if (opts.replace) window.history.replaceState({}, "", path);
+  else window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
   window.scrollTo(0, 0);
 }

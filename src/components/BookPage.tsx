@@ -25,6 +25,8 @@ import { SiteFooter, SiteHeader } from "./SiteChrome";
 import { MoreLikeThis } from "./MoreLikeThis";
 import { MoreWays } from "./MoreWays";
 import { OutLink, cx } from "./ui";
+import { EndOfDeck, SwipeDeck, type SwipeDir } from "./SwipeDeck";
+import { canRewind, loadDeck, popSwipe, pushSwipe } from "../lib/deck";
 
 type SavedShelf = { books: Book[] };
 
@@ -35,6 +37,53 @@ export function BookPage({ id }: { id: string }) {
   const books = useMemo(() => load<SavedShelf | null>("shelf", null)?.books ?? [], []);
   const library = useMemo(savedLibrary, []);
   const book = books.find((b) => b.id === id);
+
+  // Swipe deck: the shelf's current order (or the whole list if this book isn't in it).
+  const deck = useMemo(() => loadDeck(books.map((b) => b.id)), [books]);
+  const ids = deck.ids.includes(id) ? deck.ids : books.map((b) => b.id);
+  const label = deck.ids.includes(id) ? deck.label : "Your shelf";
+  const pos = ids.indexOf(id);
+  const next = pos >= 0 && pos + 1 < ids.length ? books.find((b) => b.id === ids[pos + 1]) : undefined;
+  const [ended, setEnded] = useState(false);
+  const [toast, setToast] = useState<{ text: string; n: number } | null>(null);
+  const [rewindable, setRewindable] = useState(canRewind);
+  const show = (text: string) => setToast((t) => ({ text, n: (t?.n ?? 0) + 1 }));
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const go = (bookId: string) => navigate(`/book/${encodeURIComponent(bookId)}`, { replace: true });
+  const onSwipe = (dir: SwipeDir) => {
+    if (!book) return;
+    let added = false;
+    if (dir === "right") {
+      const picks = load<ClubPick[]>("club-picks", []);
+      if (!picks.some((p) => p.id === book.id)) {
+        save("club-picks", [...picks, { id: book.id, title: book.title, author: book.author, imageUrl: book.imageUrl }]);
+        added = true;
+      }
+      show(added ? `♡ ${splitSeries(book.title).main} added to your shortlist` : "♡ Already on your shortlist");
+    }
+    pushSwipe({ id: book.id, dir, added });
+    setRewindable(true);
+    if (next) go(next.id);
+    else {
+      setEnded(true);
+      window.scrollTo(0, 0);
+    }
+  };
+  const onRewind = () => {
+    const last = popSwipe();
+    setRewindable(canRewind());
+    if (!last) return;
+    if (last.added) save("club-picks", load<ClubPick[]>("club-picks", []).filter((p) => p.id !== last.id));
+    setEnded(false);
+    const b = books.find((x) => x.id === last.id);
+    if (b) show(last.added ? `↶ Back to ${splitSeries(b.title).main}, removed from shortlist` : `↶ Back to ${splitSeries(b.title).main}`);
+    if (last.id !== id) go(last.id);
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -68,8 +117,34 @@ export function BookPage({ id }: { id: string }) {
               Go to the home page
             </button>
           </div>
+        ) : ended ? (
+          <EndOfDeck
+            shortlisted={load<ClubPick[]>("club-picks", []).length}
+            canRewind={rewindable}
+            onRewind={onRewind}
+            onRestart={() => {
+              setEnded(false);
+              if (ids[0] !== id) go(ids[0]);
+            }}
+          />
         ) : (
-          <BookDetails key={book.id} book={book} books={books} library={library} />
+          <BookDetails
+            key={book.id}
+            book={book}
+            books={books}
+            library={library}
+            deck={{ position: pos + 1, total: ids.length, label, next, canRewind: rewindable, onSwipe, onRewind }}
+          />
+        )}
+        {toast && (
+          <p
+            key={`toast-${toast.n}`}
+            role="status"
+            className="fixed inset-x-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-sm rounded-full bg-foreground px-5 py-3 text-center text-sm font-bold text-background md:bottom-8"
+            style={{ boxShadow: "var(--shadow-lift)" }}
+          >
+            {toast.text}
+          </p>
         )}
       </main>
       <SiteFooter />
@@ -91,7 +166,17 @@ function NotOnList() {
   );
 }
 
-function BookDetails({ book, books, library }: { book: Book; books: Book[]; library: LibrarySystem }) {
+type DeckProps = {
+  position: number;
+  total: number;
+  label: string;
+  next?: Book;
+  canRewind: boolean;
+  onSwipe: (dir: SwipeDir) => void;
+  onRewind: () => void;
+};
+
+function BookDetails({ book, books, library, deck }: { book: Book; books: Book[]; library: LibrarySystem; deck: DeckProps }) {
   const { genres } = useGenres(useMemo(() => [book], [book]));
   const one = useMemo(() => [book], [book]);
   const { entries, pending, retry, live } = useAvailability(one, library);
@@ -151,8 +236,18 @@ function BookDetails({ book, books, library }: { book: Book; books: Book[]; libr
 
   return (
     <ShelfContext.Provider value={shelfCtx}>
-      <article className="pt-8 sm:pt-10">
-        {/* Header: cover, title, author, series */}
+      <article>
+        {/* Header: cover, title, author, series — a swipeable card */}
+        <SwipeDeck
+          position={deck.position}
+          total={deck.total}
+          label={deck.label}
+          picked={picked}
+          canRewind={deck.canRewind}
+          onSwipe={deck.onSwipe}
+          onRewind={deck.onRewind}
+          nextPreview={deck.next ? <NextPreview book={deck.next} /> : <p className="font-script text-2xl text-link">that's the last one ♡</p>}
+        >
         <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:gap-8">
           <BigCover src={cover} />
           <div className="min-w-0 flex-1">
@@ -167,6 +262,11 @@ function BookDetails({ book, books, library }: { book: Book; books: Book[]; libr
               </p>
             )}
             {facts.length > 0 && <p className="mt-3 text-sm text-muted-foreground">{facts.join(" · ")}</p>}
+            <p className="mt-3 inline-flex flex-wrap items-center gap-x-2 rounded-full bg-muted px-3 py-1 text-sm font-bold">
+              <span className={cx("h-2.5 w-2.5 shrink-0 rounded-full", s.dot)} aria-hidden />
+              {s.label}
+              {r && owned && <span className="font-semibold text-muted-foreground">· {copiesLine(r)}</span>}
+            </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               {book.goodreadsUrl && (
                 <OutLink href={book.goodreadsUrl} className={secondary}>
@@ -192,6 +292,7 @@ function BookDetails({ book, books, library }: { book: Book; books: Book[]; libr
             </div>
           </div>
         </div>
+        </SwipeDeck>
 
         {/* Availability, expanded */}
         <Section title={`At ${library.name}`}>
@@ -272,7 +373,7 @@ function BookDetails({ book, books, library }: { book: Book; books: Book[]; libr
               {info.isError || !navigator.onLine ? "Couldn't load details right now." : "No description found on Open Library."}
             </p>
           )}
-          {d && d.subjects.length > 0 && (
+          {d && d.subjects?.length > 0 && (
             <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Subjects">
               {d.subjects.map((sub) => (
                 <li key={sub} className="rounded-full border border-border/70 px-2.5 py-0.5 text-xs capitalize text-muted-foreground">
@@ -373,10 +474,25 @@ function Description({ text }: { text: string }) {
   );
 }
 
+/** The next card peeking out from under the current one. */
+function NextPreview({ book }: { book: Book }) {
+  const { main } = splitSeries(book.title);
+  return (
+    <div className="flex gap-5 opacity-70">
+      {book.imageUrl ? <img src={book.imageUrl} alt="" className="h-28 w-20 rounded-md object-cover" /> : <div className="h-28 w-20 rounded-md bg-muted" />}
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-muted-foreground">Up next</p>
+        <p className="mt-1 font-display text-xl leading-snug">{main}</p>
+        {book.author && <p className="text-sm text-muted-foreground">by {book.author}</p>}
+      </div>
+    </div>
+  );
+}
+
 function BigCover({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
   const cls = "h-48 w-32 shrink-0 rounded-md bg-muted sm:h-60 sm:w-40";
   // No cover: a blank box only on wider screens, where it keeps the layout balanced.
   if (!src || failed) return <div className={cx(cls, "hidden sm:block")} aria-hidden />;
-  return <img src={src} alt="" onError={() => setFailed(true)} className={cls + " object-cover shadow-lg"} />;
+  return <img src={src} alt="" draggable={false} onError={() => setFailed(true)} className={cls + " object-cover shadow-lg"} />;
 }

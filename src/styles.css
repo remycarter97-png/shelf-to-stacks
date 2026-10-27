@@ -219,3 +219,20 @@
 .prose-cozy li::marker {
   color: var(--accent);
 }
+
+/* First visit on a book page: the card wiggles once to show it can be swiped. */
+.swipe-wiggle {
+  animation: swipe-wiggle 1.5s ease-in-out 0.7s 1;
+}
+@keyframes swipe-wiggle {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-22px) rotate(-2deg);
+  }
+  60% {
+    transform: translateX(22px) rotate(2deg);
+  }
+}

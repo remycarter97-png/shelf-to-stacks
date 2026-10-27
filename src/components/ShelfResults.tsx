@@ -12,6 +12,7 @@ import type { ClubPick } from "./BookClubPanel";
 import { GENRE_BY_ID, type GenreId } from "../../shared/genres";
 import { useGenres } from "../lib/useGenres";
 import { MoodPicker } from "./Moods";
+import { saveDeck } from "../lib/deck";
 
 type Filter = "all" | "available" | "checked_out" | "not_found";
 type Sort = "shelf" | "title" | "author" | "status";
@@ -151,6 +152,18 @@ export function ShelfResults({
           : String(RANK[r.result?.status ?? "checking"]) + r.book.title.toLowerCase();
     return [...list].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
   }, [rows, filter, format, query, sort, mood]);
+
+  // The book page's swipe deck follows exactly what's showing here: same filters, same order.
+  useEffect(() => {
+    const parts = [
+      mood !== "all" ? GENRE_BY_ID[mood].label : "",
+      filter === "available" ? "Available" : filter === "checked_out" ? "Checked out" : filter === "not_found" ? "Not in catalog" : "",
+      format !== "all" ? format : "",
+      query.trim() ? `“${query.trim()}”` : "",
+    ].filter(Boolean);
+    const order = sort === "title" ? "by title" : sort === "author" ? "by author" : sort === "status" ? "available first" : "";
+    saveDeck({ ids: shown.map((r) => r.book.id), label: [parts.join(" · ") || "Your shelf", order].filter(Boolean).join(", ") });
+  }, [shown, mood, filter, format, query, sort]);
 
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(page, pages);
