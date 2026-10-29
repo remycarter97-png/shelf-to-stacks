@@ -1,5 +1,6 @@
 import type { Book, ShelfResponse } from "../shared/types.js";
 import { BROWSER_UA, HttpError, fetchWithTimeout } from "./http.js";
+import { cacheGet, cacheSet } from "./cache.js";
 
 function decode(s: string): string {
   return s
@@ -44,6 +45,42 @@ export function parseRssItems(xml: string): Book[] {
 const PER_PAGE = 100;
 const MAX_PAGES = 10;
 
+export const FEED_UNAVAILABLE_MESSAGE =
+  "Goodreads isn't sharing want-to-read lists right now, so we can't load your list from your ID. Upload your Goodreads export instead. It takes about a minute.";
+
+function feedUnavailable() {
+  return new HttpError(FEED_UNAVAILABLE_MESSAGE, 503, "feed_unavailable");
+}
+
+/** True when the Goodreads profile page exists (it does even when the shelf feed doesn't). */
+async function profileExists(userId: string): Promise<boolean> {
+  try {
+    const res = await fetchWithTimeout(`https://www.goodreads.com/user/show/${userId}`, { headers: { "User-Agent": BROWSER_UA } }, 8_000);
+    return res.ok;
+  } catch {
+    return true; // can't tell; don't blame the reader's ID
+  }
+}
+
+/**
+ * Whether Goodreads' shelf feeds work at all, checked against a long-standing public account
+ * (Goodreads' co-founder, user 1). Cached for 15 minutes.
+ */
+export async function goodreadsFeedStatus(): Promise<"up" | "down"> {
+  const key = "goodreads-feed-status:v1";
+  const cached = await cacheGet<"up" | "down">(key);
+  if (cached) return cached;
+  let status: "up" | "down" = "down";
+  try {
+    const res = await fetchWithTimeout("https://www.goodreads.com/review/list_rss/1?shelf=read&per_page=1", { headers: { "User-Agent": BROWSER_UA } }, 8_000);
+    if (res.ok && (await res.text()).includes("<rss")) status = "up";
+  } catch {
+    status = "down";
+  }
+  await cacheSet(key, status, 15 * 60);
+  return status;
+}
+
 export async function fetchShelf(userId: string, shelf = "to-read"): Promise<ShelfResponse> {
   const pageUrl = (page: number) =>
     `https://www.goodreads.com/review/list_rss/${userId}?shelf=${encodeURIComponent(shelf)}&per_page=${PER_PAGE}&page=${page}`;
@@ -52,11 +89,16 @@ export async function fetchShelf(userId: string, shelf = "to-read"): Promise<She
     const res = await fetchWithTimeout(pageUrl(page), { headers: { "User-Agent": BROWSER_UA } }, 12_000);
     if (!res.ok) {
       if (page === 1) {
+        if (res.status === 404) {
+          // Since Oct 28, 2026 Goodreads answers "not found" for every shelf feed. Only call the
+          // ID wrong when the profile itself doesn't exist.
+          if (await profileExists(userId)) throw feedUnavailable();
+          throw new HttpError("We couldn't find that Goodreads user. Check the ID and try again.", 502, "user_not_found");
+        }
         throw new HttpError(
-          res.status === 404
-            ? "We couldn't find that Goodreads user. Check the ID and try again."
-            : "This Goodreads profile or its Want to Read shelf looks private, so Goodreads won't share it. Make it public in Goodreads privacy settings, or upload your Goodreads export instead.",
+          "This Goodreads profile or its Want to Read shelf looks private, so Goodreads won't share it. Make it public in Goodreads privacy settings, or upload your Goodreads export instead.",
           502,
+          "private",
         );
       }
       return "";

@@ -16,7 +16,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(navigator.onLine ? "Couldn't reach Shelf to Stacks. Try again." : "You're offline.");
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.error || `Request failed (${res.status}).`), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error(body.error || `Request failed (${res.status}).`), { status: res.status, code: body.code as string | undefined });
   return body as T;
 }
 

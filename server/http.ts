@@ -33,6 +33,8 @@ export class HttpError extends Error {
   constructor(
     message: string,
     public status = 400,
+    /** A short machine-readable reason the app can act on, e.g. "feed_unavailable". */
+    public code?: string,
   ) {
     super(message);
   }
@@ -43,7 +45,7 @@ export function handle(fn: (req: Request) => Promise<Response>) {
     try {
       return await fn(req);
     } catch (e) {
-      if (e instanceof HttpError) return errorJson(e.message, e.status);
+      if (e instanceof HttpError) return errorJson(e.message, e.status, e.code ? { code: e.code } : {});
       console.error("Unhandled API error", e);
       return errorJson("Something went wrong. Please try again.", 500);
     }

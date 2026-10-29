@@ -32,5 +32,6 @@ export function timeAgo(ts: number) {
   if (mins < 60) return `${mins} min ago`;
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs} hr ago`;
-  return `${Math.round(hrs / 24)} days ago`;
+  const days = Math.round(hrs / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
 }

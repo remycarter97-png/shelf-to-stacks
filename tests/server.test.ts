@@ -81,6 +81,24 @@ test("shelf of 252 books loads all three pages", async () => {
   assert.equal(shelf.shelfTitle, "Jane's bookshelf: to-read");
 });
 
+test("feed 'not found' but the profile exists → Goodreads feeds are down, not a wrong ID", async () => {
+  mockFetch((url) => (url.includes("/user/show/") ? new Response("<html>profile</html>") : new Response("Page not found", { status: 404 })));
+  await assert.rejects(fetchShelf("144932103"), (e: any) => e.code === "feed_unavailable" && /export/.test(e.message));
+  const res = await shelfRoute(new Request("http://x/api/shelf", { method: "POST", body: JSON.stringify({ userId: "144932103" }) }));
+  assert.equal(res.status, 503);
+  assert.equal((await res.json()).code, "feed_unavailable");
+});
+
+test("feed and profile both 'not found' → the ID is wrong", async () => {
+  mockFetch(() => new Response("Page not found", { status: 404 }));
+  await assert.rejects(fetchShelf("999"), (e: any) => e.code === "user_not_found" && /couldn't find that Goodreads user/.test(e.message));
+});
+
+test("feed health check reports down when Goodreads feeds 404", async () => {
+  mockFetch(() => new Response("Page not found", { status: 404 }));
+  assert.deepEqual(await (await configRoute()).json(), { recommendations: false, goodreadsFeed: "down" });
+});
+
 test("private shelf gives a clear message", async () => {
   mockFetch(() => new Response("nope", { status: 403 }));
   await assert.rejects(fetchShelf("123"), /private/);
@@ -249,11 +267,12 @@ test("API: /api/availability returns one result per book, in order", async () =>
 });
 
 test("API: recommendations stay off until an AI provider is configured", async () => {
-  assert.deepEqual(await configRoute().json(), { recommendations: false });
+  mockFetch(() => new Response(rss(1, 1)));
+  assert.deepEqual(await (await configRoute()).json(), { recommendations: false, goodreadsFeed: "up" });
   process.env.AI_PROVIDER = "anthropic";
   process.env.AI_API_KEY = "k";
   process.env.AI_MODEL = "m";
-  assert.deepEqual(await configRoute().json(), { recommendations: true });
+  assert.deepEqual(await (await configRoute()).json(), { recommendations: true, goodreadsFeed: "up" });
   delete process.env.AI_API_KEY;
   delete process.env.AI_MODEL;
 });

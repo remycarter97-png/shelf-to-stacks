@@ -49,7 +49,8 @@ export function Home() {
   }, []);
 
   const fetchShelf = useMutation({
-    mutationFn: (args: { id: string; refresh?: boolean }) => api.shelf(args.id, args.refresh),
+    // `auto` = the quiet hourly refresh; its failures aren't shown (the saved list stays).
+    mutationFn: (args: { id: string; refresh?: boolean; auto?: boolean }) => api.shelf(args.id, args.refresh),
     onSuccess: (res) => {
       const next: SavedShelf = { userId: res.userId, books: res.books, at: Date.now(), origin: "goodreads" };
       setShelf(next);
@@ -64,7 +65,7 @@ export function Home() {
   // Returning visitor: show the saved shelf right away, then quietly refresh it once an hour.
   useEffect(() => {
     if (shelf && (shelf.origin ?? "goodreads") === "goodreads" && navigator.onLine && Date.now() - shelf.at > 60 * 60_000) {
-      fetchShelf.mutate({ id: shelf.userId, refresh: true });
+      fetchShelf.mutate({ id: shelf.userId, refresh: true, auto: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -94,6 +95,20 @@ export function Home() {
 
   const togglePick = (p: ClubPick) =>
     setPicks((prev) => (prev.some((x) => x.id === p.id) ? prev.filter((x) => x.id !== p.id) : [...prev, p]));
+
+  // Goodreads stopped sharing shelf feeds on Oct 28, 2026. While that lasts, the upload is the main way in.
+  const feedDown = config.data?.goodreadsFeed === "down";
+  const [exportHelpOpen, setExportHelpOpen] = useState(false);
+  const goToExport = () => {
+    switchMode("file");
+    setExportHelpOpen(true);
+  };
+  useEffect(() => {
+    // New visitors (no saved choice, no saved list) start on the upload while feeds are down.
+    if (feedDown && load<ShelfOrigin | null>("mode", null) === null && !shelf) setMode("file");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedDown]);
+  const shelfError = fetchShelf.isError && !fetchShelf.variables?.auto ? (fetchShelf.error as Error & { status?: number; code?: string }) : null;
 
   const books = shelf?.books ?? [];
   const sameUser = shelf && shelf.userId === userId.trim().match(/\d+/)?.[0];
@@ -129,8 +144,8 @@ export function Home() {
           <div role="tablist" aria-label="Where your list comes from" className="mt-7 inline-flex rounded-md border border-border/60 bg-card p-1 text-sm">
             {(
               [
-                ["goodreads", "Goodreads"],
-                ["file", "StoryGraph"],
+                ["goodreads", "Goodreads ID"],
+                ["file", "Upload a list"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -159,6 +174,19 @@ export function Home() {
 
           {mode === "goodreads" ? (
           <>
+          {feedDown && (
+            <div role="status" className="mt-4 max-w-2xl rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm">
+              <p className="font-bold">Goodreads isn't sharing want-to-read lists right now</p>
+              <p className="mt-1 text-muted-foreground">
+                Since October 28, Goodreads has stopped sharing lists from profile IDs, for everyone. Upload your Goodreads
+                export instead. It takes about a minute and works with private profiles too. Your ID will work again here if
+                Goodreads brings lists back.
+              </p>
+              <Button className="mt-3" onClick={goToExport}>
+                Upload my Goodreads export
+              </Button>
+            </div>
+          )}
           <form
             className="mt-4 flex max-w-2xl flex-col gap-3 sm:flex-row"
             onSubmit={(e) => {
@@ -199,7 +227,7 @@ export function Home() {
               </label>
               <p className="mt-2 text-sm text-muted-foreground">A StoryGraph or Goodreads library export. The file stays on your device.</p>
               <StoryGraphHelp />
-              <GoodreadsExportHelp />
+              <GoodreadsExportHelp defaultOpen={exportHelpOpen} />
               {fileError && (
                 <p role="alert" className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {fileError}
@@ -245,26 +273,36 @@ export function Home() {
 
           {mode === "goodreads" && <HelpHint />}
 
-          {fetchShelf.isError && (
-            <div role="alert" className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
-              <p className="text-destructive">{(fetchShelf.error as Error).message}</p>
-              {(fetchShelf.error as Error & { status?: number }).status !== 400 && (
-                <button type="button" onClick={() => switchMode("file")} className="mt-1 text-link underline underline-offset-2">
-                  Upload your Goodreads export instead
-                </button>
+          {shelfError && mode === "goodreads" && (
+            <div role="alert" className="mt-4 max-w-2xl rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+              <p className="text-destructive">{shelfError.message}</p>
+              {shelfError.code === "feed_unavailable" ? (
+                <Button className="mt-3" onClick={goToExport}>
+                  Upload my Goodreads export
+                </Button>
+              ) : (
+                shelfError.status !== 400 && (
+                  <button type="button" onClick={goToExport} className="mt-1 text-link underline underline-offset-2">
+                    Upload your Goodreads export instead
+                  </button>
+                )
               )}
             </div>
           )}
           {shelf && !fetchShelf.isPending && (shelf.origin ?? "goodreads") === "goodreads" && (
             <p className="mt-3 text-xs text-muted-foreground">
               Shelf loaded {timeAgo(shelf.at)}.{" "}
-              <button
-                type="button"
-                className="underline underline-offset-2 hover:text-foreground"
-                onClick={() => fetchShelf.mutate({ id: shelf.userId, refresh: true })}
-              >
-                Reload from Goodreads
-              </button>
+              {feedDown ? (
+                "This is your saved copy, since Goodreads isn't sharing lists right now."
+              ) : (
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-foreground"
+                  onClick={() => fetchShelf.mutate({ id: shelf.userId, refresh: true })}
+                >
+                  Reload from Goodreads
+                </button>
+              )}
             </p>
           )}
           {shelf && shelf.origin === "file" && (
@@ -378,8 +416,8 @@ function ImportOptions({ onUpload }: { onUpload: () => void }) {
   );
 }
 
-function GoodreadsExportHelp() {
-  const [open, setOpen] = useState(false);
+function GoodreadsExportHelp({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="mt-1 text-sm text-muted-foreground">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 underline underline-offset-2 hover:text-foreground">

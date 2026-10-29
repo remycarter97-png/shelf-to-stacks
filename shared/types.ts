@@ -71,7 +71,11 @@ export type LibbyResponse = { status: "ok" | "error"; items: LibbyItem[]; search
 
 export type Recommendation = { title: string; author: string; reason: string };
 
-export type AppConfig = { recommendations: boolean };
+export type AppConfig = {
+  recommendations: boolean;
+  /** Whether Goodreads' shelf feeds are working (they stopped on Oct 28, 2026). */
+  goodreadsFeed?: "up" | "down";
+};
 
 /** Stable key for a book's availability result. */
 export function bookKey(b: { title: string; author: string; isbn: string }) {
