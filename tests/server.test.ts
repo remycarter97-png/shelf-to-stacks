@@ -46,6 +46,7 @@ beforeEach(() => {
   resetBreakers();
   clearMemoryCache();
   delete process.env.SCRAPERAPI_KEY;
+  delete process.env.SCRAPINGANT_KEY;
   delete process.env.BRIGHTDATA_API_KEY;
   delete process.env.BRIGHTDATA_ZONE;
   delete process.env.AI_PROVIDER;
@@ -155,6 +156,56 @@ test("Bright Data refusing the key falls through to ScraperAPI", async () => {
     : new Response("", { status: 403 }));
   const r = await checkBook({ title: "Fallthrough Book", author: "A", isbn: "5" }, "bpl");
   assert.equal(r.status, "available");
+});
+
+test("ScraperAPI out of credits → ScrapingAnt takes over, without a browser", async () => {
+  process.env.SCRAPERAPI_KEY = "sa-key";
+  process.env.SCRAPINGANT_KEY = "ant-key";
+  mockFetch((url) =>
+    url.startsWith("https://api.scraperapi.com") ? new Response("", { status: 403 })
+    : url.startsWith("https://api.scrapingant.com") ? new Response(JSON.stringify(bib("A1", 2, 3)), { status: 200, headers: { "Ant-page-status-code": "200" } })
+    : new Response("", { status: 403 }));
+  const r = await checkBook({ title: "Ant Book", author: "A", isbn: "6" }, "bpl");
+  assert.equal(r.status, "available");
+  const ant = new URL(calls.find((c) => c.startsWith("https://api.scrapingant.com"))!);
+  assert.equal(ant.pathname, "/v2/general");
+  assert.equal(ant.searchParams.get("browser"), "false");
+  assert.equal(ant.searchParams.get("x-api-key"), "ant-key");
+  assert.match(ant.searchParams.get("url")!, /gateway\.bibliocommons\.com\/v2\/libraries\/bpl/);
+});
+
+test("ScrapingAnt: a blocked catalog page or a used-up quota is handled", async () => {
+  process.env.SCRAPINGANT_KEY = "ant-key";
+  // The catalog's own 403 arrives inside ScrapingAnt's 200.
+  mockFetch((url) =>
+    url.startsWith("https://api.scrapingant.com") ? new Response("<html>blocked</html>", { status: 200, headers: { "Ant-page-status-code": "403" } })
+    : new Response("", { status: 403 }));
+  assert.equal((await checkBook({ title: "Hidden Block", author: "A", isbn: "7" }, "bpl")).status, "error");
+
+  resetBreakers();
+  mockFetch((url) => (url.startsWith("https://api.scrapingant.com") ? new Response('{"detail":"Requests quota limit reached."}', { status: 403 }) : new Response("", { status: 403 })));
+  assert.equal((await checkBook({ title: "Quota Book", author: "A", isbn: "8" }, "bpl")).status, "error");
+  const before = calls.filter((c) => c.includes("scrapingant")).length;
+  await checkBook({ title: "Quota Book 2", author: "B", isbn: "9" }, "bpl");
+  assert.equal(calls.filter((c) => c.includes("scrapingant")).length, before, "paused after the quota message");
+});
+
+test("ScrapingAnt requests go one at a time (free plan limit)", async () => {
+  process.env.SCRAPINGANT_KEY = "ant-key";
+  let running = 0;
+  let peak = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (!url.startsWith("https://api.scrapingant.com")) return new Response("", { status: 403 });
+    running++;
+    peak = Math.max(peak, running);
+    await new Promise((r) => setTimeout(r, 30));
+    running--;
+    return new Response(JSON.stringify(bib("A2", 1, 1)), { status: 200, headers: { "Ant-page-status-code": "200" } });
+  }) as typeof fetch;
+  const results = await Promise.all([1, 2, 3, 4].map((n) => checkBook({ title: `Queued ${n}`, author: "A", isbn: String(20 + n) }, "bpl")));
+  assert.ok(results.every((r) => r.status === "available"));
+  assert.equal(peak, 1);
 });
 
 test("checks run in parallel, not one at a time", async () => {

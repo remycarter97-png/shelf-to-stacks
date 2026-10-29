@@ -38,6 +38,7 @@ Your Goodreads or StoryGraph want-to-read list, checked against your public libr
 | `BRIGHTDATA_API_KEY` | Your Bright Data API key | Optional backup for BPL lookups |
 | `BRIGHTDATA_ZONE` | Your Web Unlocker zone name (zone's **Overview** tab) | Needed with the Bright Data key |
 | `SCRAPERAPI_KEY` | A working ScraperAPI key | Optional second backup |
+| `SCRAPINGANT_KEY` | Your ScrapingAnt API key (scrapingant.com → Dashboard) | Optional third backup; the free plan has 10,000 credits a month |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Added for you by the Upstash integration (Vercel → Storage / Marketplace) | Optional; shares the cache and rate limits across servers |
 
 3. Click **Deploy**. You get a link like `shelf-to-stacks.vercel.app`; add your own domain later under **Settings → Domains**.
@@ -66,7 +67,7 @@ Requests are limited to 5 per visitor per 10 minutes and 200 per hour site-wide.
 
 ## About catalog access
 
-Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then Bright Data, then ScraperAPI (whichever are set up), and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The lasting fix is permission: ask BPL or BiblioCommons for sanctioned access. Other libraries (including the Minuteman network, whose catalog blocks automated lookups) are left out until they can be checked reliably. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
+Boston Public Library's catalog sometimes blocks automated requests. The app tries the catalog directly, then Bright Data, then ScraperAPI, then ScrapingAnt (whichever are set up), and pauses either path for a few minutes when it is refused, so one bad stretch doesn't slow every book. The lasting fix is permission: ask BPL or BiblioCommons for sanctioned access. Other libraries (including the Minuteman network, whose catalog blocks automated lookups) are left out until they can be checked reliably. Libby status uses the same public search the Libby app uses; it isn't an official API, so it falls back to a Libby link if it changes.
 
 ## For developers
 

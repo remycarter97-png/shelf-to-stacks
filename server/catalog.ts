@@ -5,6 +5,8 @@
 //   1. Direct request to the BiblioCommons gateway.
 //   2. Bright Data Web Unlocker (when BRIGHTDATA_API_KEY and BRIGHTDATA_ZONE are set).
 //   3. ScraperAPI (when SCRAPERAPI_KEY is set).
+//   4. ScrapingAnt (when SCRAPINGANT_KEY is set). Its free plan allows one request at a time,
+//      so requests to it wait their turn (and give up after a short wait).
 // Every path has a circuit breaker so one bad stretch doesn't slow every book down:
 //   - Direct blocked (403/422/429) → skip direct for 2 minutes.
 //   - A proxy refuses the key or has no credits (401/402/403/407) → skip that proxy for 10 minutes.
@@ -19,13 +21,14 @@ const DIRECT_TIMEOUT_MS = 7_000;
 const PROXY_TIMEOUT_MS = 15_000;
 const RESULT_TTL_SECONDS = 15 * 60;
 
-const breaker = { directBlockedUntil: 0, brightdataOffUntil: 0, scraperapiOffUntil: 0 };
+const breaker = { directBlockedUntil: 0, brightdataOffUntil: 0, scraperapiOffUntil: 0, scrapingantOffUntil: 0 };
 
 /** Exposed for tests. */
 export function resetBreakers() {
   breaker.directBlockedUntil = 0;
   breaker.brightdataOffUntil = 0;
   breaker.scraperapiOffUntil = 0;
+  breaker.scrapingantOffUntil = 0;
 }
 
 const KEY_REFUSED = new Set([401, 402, 403, 407]);
@@ -136,13 +139,47 @@ async function viaScraperApi(target: string): Promise<FetchOutcome> {
   }
 }
 
+// ScrapingAnt's free plan allows one request at a time, so requests line up here.
+let antLine: Promise<unknown> = Promise.resolve();
+const ANT_MAX_WAIT_MS = 30_000;
+
+async function viaScrapingAnt(target: string): Promise<FetchOutcome> {
+  const key = process.env.SCRAPINGANT_KEY;
+  if (!key || Date.now() < breaker.scrapingantOffUntil) return { kind: "failed" };
+  const queuedAt = Date.now();
+  const run = antLine.then(async (): Promise<FetchOutcome> => {
+    // Too long in line, or ScrapingAnt was paused while we waited: give up on this book.
+    if (Date.now() - queuedAt > ANT_MAX_WAIT_MS || Date.now() < breaker.scrapingantOffUntil) return { kind: "failed" };
+    // The key goes in the address, as ScrapingAnt documents; this address is never logged.
+    const params = new URLSearchParams({ url: target, "x-api-key": key, browser: "false", timeout: "20" });
+    try {
+      const res = await fetchWithTimeout(`https://api.scrapingant.com/v2/general?${params}`, { headers: { Accept: "application/json" } }, 25_000);
+      if (res.status === 403 || res.status === 422) {
+        // 403: wrong key or the month's credits are used up. 422: missing key or bad settings.
+        console.warn(`ScrapingAnt refused the request (HTTP ${res.status}); pausing it for 10 minutes. Check the key and remaining credits.`);
+        breaker.scrapingantOffUntil = Date.now() + 10 * 60_000;
+        return { kind: "failed" };
+      }
+      if (res.status === 423) return { kind: "blocked" }; // the catalog spotted the scraper
+      if (!res.ok) return { kind: "failed" }; // 404 unreachable/timeout, 409 busy, 500 server error
+      // The catalog's own reply status comes in a header; a 200 here can still hide a block.
+      const page = Number(res.headers.get("ant-page-status-code") || 200);
+      return await readCatalogReply(new Response(await res.text(), { status: page >= 200 && page <= 599 ? page : 200 }));
+    } catch {
+      return { kind: "failed" };
+    }
+  });
+  antLine = run.catch(() => undefined);
+  return run;
+}
+
 async function search(lib: string, query: string): Promise<FetchOutcome> {
   const target = `https://gateway.bibliocommons.com/v2/libraries/${lib}/bibs/search?query=${encodeURIComponent(
     query,
   )}&searchType=keyword`;
   const first = await direct(target, lib);
   if (first.kind === "ok") return first;
-  for (const proxy of [viaBrightData, viaScraperApi]) {
+  for (const proxy of [viaBrightData, viaScraperApi, viaScrapingAnt]) {
     const out = await proxy(target);
     if (out.kind === "ok") return out;
   }
