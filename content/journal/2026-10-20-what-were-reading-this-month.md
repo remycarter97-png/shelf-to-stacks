@@ -2,20 +2,20 @@
 title: What we're reading this month
 date: 2026-10-20
 category: Reading list
-excerpt: Three strange, gentle, lovely books for long autumn evenings, and how to find them at your library.
+excerpt: A stranded flight crew on a hostile planet, a family story about bracing for disaster, and a very grumpy octopus.
 picture: stack
 color: blush
 ---
 
 October is for blankets and the kind of book you can sink into for a whole rainy Sunday. Here's what's been on our nightstand this month.
 
-## Piranesi, by Susanna Clarke
+## Blightfall
 
-A man lives alone in an endless house of marble halls and statues, where the tides come in through the lower floors. He keeps careful journals and loves the House completely. It's short, quiet and quietly astonishing, and it's best if you know as little as possible going in.
+After decades of war against alien oppressors, the Defiant Defense Force has won humanity’s freedom, but Skyward Flight leader Arturo Mendez finds peacetime isn’t what he expected. His first postwar assignment, escorting diplomats to contact a lost human settlement, is supposed to be routine, until they reach Blightfall, a hostile planet overrun by giant invasive forests and ringed by mysterious debris, and come under attack. Stranded and unsure whom to trust, Arturo and his team must find allies and uncover buried secrets if they want to make it home.
 
-## Legends & Lattes, by Travis Baldree
+## Hollow Bones
 
-An orc mercenary hangs up her sword and opens a coffee shop in a town that has never heard of coffee. The stakes are low on purpose: found family, cinnamon rolls, and a bard who wants to play on the patio. If you need a book that feels like a warm mug, this is it.
+Molly Fitzgerald lost her mother in the September 11 attacks when she was just two months old, and though her father and stepmother raised her lovingly, she grew up deeply afraid of disaster. As an adult, she heads Rhode Island’s emergency preparedness department and has found comfort in her marriage to Jesse, a police polygraph expert with his own past traumas, until something unexpected shakes their faith in everything they believed. Shifting between past and present, Hollow Bones explores the stories we tell ourselves about our lives, the plans we make to survive our worst moments, and the bonds between mothers and daughters.
 
 ## Remarkably Bright Creatures, by Shelby Van Pelt
 
