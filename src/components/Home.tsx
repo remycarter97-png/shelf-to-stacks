@@ -164,7 +164,7 @@ export function Home() {
             ))}
           </div>
 
-          <ImportOptions onUpload={() => switchMode("file")} />
+          <ImportOptions onUpload={() => switchMode("file")} feedDown={feedDown} />
           <p className="mt-1 text-sm text-muted-foreground">
             Choosing for a book club?{" "}
             <button type="button" onClick={() => navigate("/club")} className="font-medium text-link underline underline-offset-2">
@@ -176,17 +176,18 @@ export function Home() {
           <>
           {feedDown && (
             <div role="status" className="mt-4 max-w-2xl rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm">
-              <p className="font-bold">Goodreads isn't sharing want-to-read lists right now</p>
+              <p className="font-bold">Goodreads shut down want-to-read feeds</p>
               <p className="mt-1 text-muted-foreground">
-                Since October 28, Goodreads has stopped sharing lists from profile IDs, for everyone. Upload your Goodreads
-                export instead. It takes about a minute and works with private profiles too. Your ID will work again here if
-                Goodreads brings lists back.
+                On October 28, 2026, Goodreads turned off the RSS feeds that let apps like Shelf to Stacks read a
+                want-to-read list from a profile ID. Upload your Goodreads export instead. It takes about a minute and works
+                with private profiles too.
               </p>
               <Button className="mt-3" onClick={goToExport}>
                 Upload my Goodreads export
               </Button>
             </div>
           )}
+          {!feedDown && (
           <form
             className="mt-4 flex max-w-2xl flex-col gap-3 sm:flex-row"
             onSubmit={(e) => {
@@ -208,6 +209,7 @@ export function Home() {
               {fetchShelf.isPending ? "Loading shelf…" : library ? "Check the catalog" : "Choose a library first"}
             </Button>
           </form>
+          )}
           </>
           ) : (
             <div className="mt-4 max-w-2xl">
@@ -271,7 +273,7 @@ export function Home() {
             </p>
           )}
 
-          {mode === "goodreads" && <HelpHint />}
+          {mode === "goodreads" && !feedDown && <HelpHint />}
 
           {shelfError && mode === "goodreads" && (
             <div role="alert" className="mt-4 max-w-2xl rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
@@ -293,7 +295,7 @@ export function Home() {
             <p className="mt-3 text-xs text-muted-foreground">
               Shelf loaded {timeAgo(shelf.at)}.{" "}
               {feedDown ? (
-                "This is your saved copy, since Goodreads isn't sharing lists right now."
+                "This is your saved copy. Goodreads shut down the feed that kept it up to date, so upload a new export when your list changes."
               ) : (
                 <button
                   type="button"
@@ -353,6 +355,7 @@ export function Home() {
         <JournalTeaser />
 
         <About
+          feedDown={feedDown}
           onUpload={() => {
             switchMode("file");
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -366,7 +369,7 @@ export function Home() {
 }
 
 /** What each import option reads, and its limits. */
-function ImportOptions({ onUpload }: { onUpload: () => void }) {
+function ImportOptions({ onUpload, feedDown }: { onUpload: () => void; feedDown: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-3 max-w-2xl text-sm">
@@ -380,7 +383,9 @@ function ImportOptions({ onUpload }: { onUpload: () => void }) {
               [
                 "Goodreads profile link",
                 "Your Want to Read shelf: title, author, ISBN, cover. Refreshes itself hourly.",
-                "Profile and shelf must be public. Up to 1,000 books. Other shelves aren't read.",
+                feedDown
+                  ? "Not working: Goodreads shut down these RSS feeds on October 28, 2026. Use the export file instead."
+                  : "Profile and shelf must be public. Up to 1,000 books. Other shelves aren't read.",
               ],
               [
                 "Goodreads export file",
@@ -501,7 +506,7 @@ function HelpHint() {
   );
 }
 
-function About({ onUpload }: { onUpload: () => void }) {
+function About({ onUpload, feedDown }: { onUpload: () => void; feedDown: boolean }) {
   return (
     <section id="about" className="mt-24 scroll-mt-24">
       <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
@@ -530,15 +535,26 @@ function About({ onUpload }: { onUpload: () => void }) {
         <div className="rounded-[1.4rem] bg-card p-6" style={{ boxShadow: "var(--shadow-soft)" }}>
           <h2 className="font-display text-2xl text-foreground">How it works</h2>
           <p className="mt-2">
-            We read your public Goodreads Want to Read shelf (or the to-read books in a StoryGraph export), then look each
-            book up in Boston Public Library's catalog for live availability. Borrow somewhere else? Use “Request a
-            different library” and we'll look into adding it.
+            {feedDown
+              ? "We read the to-read books in your Goodreads or StoryGraph export"
+              : "We read your public Goodreads Want to Read shelf (or the to-read books in a Goodreads or StoryGraph export)"}
+            , then look each book up in Boston Public Library's catalog for live availability. Borrow somewhere else? Use
+            “Request a different library” and we'll look into adding it.
           </p>
           <p className="mt-3">
-            <b className="text-foreground">Goodreads profiles must be public.</b> Goodreads closed its public API, so we
-            can only read public Want to Read shelves.{" "}
+            {feedDown ? (
+              <>
+                <b className="text-foreground">Goodreads shut down its want-to-read feeds</b> on October 28, 2026, so a
+                Goodreads export is now the way to bring your list.{" "}
+              </>
+            ) : (
+              <>
+                <b className="text-foreground">Goodreads profiles must be public.</b> Goodreads closed its public API, so we
+                can only read public Want to Read shelves.{" "}
+              </>
+            )}
             <button type="button" onClick={onUpload} className="font-semibold text-link underline underline-offset-2">
-              Private profile? Upload your Goodreads export
+              Upload your Goodreads export
             </button>
           </p>
         </div>

@@ -46,7 +46,7 @@ const PER_PAGE = 100;
 const MAX_PAGES = 10;
 
 export const FEED_UNAVAILABLE_MESSAGE =
-  "Goodreads isn't sharing want-to-read lists right now, so we can't load your list from your ID. Upload your Goodreads export instead. It takes about a minute.";
+  "Goodreads shut down the RSS feeds that let apps read want-to-read lists (October 28, 2026), so we can't load your list from your ID. Upload your Goodreads export instead. It takes about a minute.";
 
 function feedUnavailable() {
   return new HttpError(FEED_UNAVAILABLE_MESSAGE, 503, "feed_unavailable");
@@ -90,7 +90,7 @@ export async function fetchShelf(userId: string, shelf = "to-read"): Promise<She
     if (!res.ok) {
       if (page === 1) {
         if (res.status === 404) {
-          // Since Oct 28, 2026 Goodreads answers "not found" for every shelf feed. Only call the
+          // Goodreads shut down its shelf RSS feeds on Oct 28, 2026; every feed now answers "not found". Only call the
           // ID wrong when the profile itself doesn't exist.
           if (await profileExists(userId)) throw feedUnavailable();
           throw new HttpError("We couldn't find that Goodreads user. Check the ID and try again.", 502, "user_not_found");
