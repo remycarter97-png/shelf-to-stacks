@@ -5,6 +5,8 @@ import { importLibraryCsv } from "../../shared/importCsv";
 import { api } from "../lib/api";
 import { LIBRARIES, savedLibrary, type LibrarySystem } from "../lib/libraries";
 import { LibraryRequest } from "./LibraryRequest";
+import { BookSearchAdd, hitToBook, sameBook, searchBookId, type SearchHit } from "./BookSearchAdd";
+import { ExportGuide } from "./ExportGuide";
 import { clearAll, load, requestPersistentStorage, save } from "../lib/storage";
 import { timeAgo } from "../lib/format";
 import { BookClubPanel, type ClubPick } from "./BookClubPanel";
@@ -17,8 +19,10 @@ import { navigate, takeShelfScroll } from "../lib/router";
 import { ShelfResults } from "./ShelfResults";
 import { Button, Input, OutLink, Select, cx } from "./ui";
 
-/** "goodreads" = live from the Goodreads feed; "file" = uploaded export (StoryGraph or Goodreads). */
-type ShelfOrigin = "goodreads" | "file";
+/** Where the list on this device came from. "manual" = books added one by one with search. */
+type ShelfOrigin = "goodreads" | "file" | "manual";
+/** Which way in is showing: search for books, upload an export, or a Goodreads ID. */
+type Mode = "search" | "file" | "goodreads";
 type SavedShelf = { userId: string; books: Book[]; at: number; origin?: ShelfOrigin; fileName?: string; fileSource?: "storygraph" | "goodreads" };
 
 export function Home() {
@@ -29,7 +33,12 @@ export function Home() {
   const [requesting, setRequesting] = useState(false);
   const [shelf, setShelf] = useState<SavedShelf | null>(() => load<SavedShelf | null>("shelf", null));
   const [picks, setPicks] = useState<ClubPick[]>(() => load("club-picks", []));
-  const [mode, setMode] = useState<ShelfOrigin>(() => load<SavedShelf | null>("shelf", null)?.origin ?? load<ShelfOrigin>("mode", "goodreads"));
+  const [mode, setMode] = useState<Mode>(() => {
+    const origin = load<SavedShelf | null>("shelf", null)?.origin;
+    if (origin === "manual") return "search";
+    // New visitors start with search: they can see real availability before importing anything.
+    return origin ?? load<Mode>("mode", "search");
+  });
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const config = useQuery({ queryKey: ["config"], queryFn: api.config, staleTime: Infinity, retry: false });
@@ -52,9 +61,11 @@ export function Home() {
     // `auto` = the quiet hourly refresh; its failures aren't shown (the saved list stays).
     mutationFn: (args: { id: string; refresh?: boolean; auto?: boolean }) => api.shelf(args.id, args.refresh),
     onSuccess: (res) => {
-      const next: SavedShelf = { userId: res.userId, books: res.books, at: Date.now(), origin: "goodreads" };
-      setShelf(next);
-      save("shelf", next);
+      setShelf((prev) => {
+        const next: SavedShelf = { userId: res.userId, books: keepHandAdded(prev?.books, res.books), at: Date.now(), origin: "goodreads" };
+        save("shelf", next);
+        return next;
+      });
       save("userId", userId.trim());
       requestPersistentStorage();
       // Bring the results into view, mainly for phones where they start below the fold.
@@ -70,17 +81,32 @@ export function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Loads an export's text as the list. Books added by search are kept. */
+  const importText = (text: string, fileName: string) => {
+    const res = importLibraryCsv(text);
+    setShelf((prev) => {
+      const next: SavedShelf = {
+        userId: "",
+        books: keepHandAdded(prev?.books, res.books),
+        at: Date.now(),
+        origin: "file",
+        fileName,
+        fileSource: res.source,
+      };
+      save("shelf", next);
+      return next;
+    });
+    save("stale-snooze-until", 0);
+    requestPersistentStorage();
+    setTimeout(() => document.getElementById("results-heading")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setFileError(null);
     try {
       if (file.size > 20_000_000) throw new Error("That file is too large to be a library export.");
-      const res = importLibraryCsv(await file.text());
-      const next: SavedShelf = { userId: "", books: res.books, at: Date.now(), origin: "file", fileName: file.name, fileSource: res.source };
-      setShelf(next);
-      save("shelf", next);
-      requestPersistentStorage();
-      setTimeout(() => document.getElementById("results-heading")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      importText(await file.text(), file.name);
     } catch (e) {
       setFileError((e as Error).message);
     } finally {
@@ -88,7 +114,50 @@ export function Home() {
     }
   };
 
-  const switchMode = (m: ShelfOrigin) => {
+  // Android: an export shared to the installed app ("Share → Shelf to Stacks") arrives here.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("shared")) return;
+    window.history.replaceState({}, "", "/");
+    (async () => {
+      try {
+        const cache = await caches.open("share-target");
+        const res = await cache.match("/shared-file");
+        if (!res) return;
+        const name = decodeURIComponent(res.headers.get("x-file-name") || "export.csv");
+        switchMode("file");
+        importText(await res.text(), name);
+        await cache.delete("/shared-file");
+      } catch (e) {
+        switchMode("file");
+        setFileError((e as Error).message || "We couldn't open the shared file. Try uploading it instead.");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Search: add or remove one book by hand.
+  const onListState = (h: SearchHit): "added" | "imported" | false => {
+    const b = (shelf?.books ?? []).find((x) => x.id === searchBookId(h) || sameBook(x, h));
+    return !b ? false : b.source === "search" ? "added" : "imported";
+  };
+  const toggleSearchBook = (h: SearchHit) => {
+    setShelf((prev) => {
+      const list = prev?.books ?? [];
+      const existing = list.find((x) => x.id === searchBookId(h) || sameBook(x, h));
+      if (existing && existing.source !== "search") return prev; // imported books are managed by the upload
+      const books = existing ? list.filter((x) => x !== existing) : [...list, hitToBook(h)];
+      if (books.length === 0 && (!prev || prev.origin === "manual")) {
+        save("shelf", null);
+        return null;
+      }
+      const next: SavedShelf = prev ? { ...prev, books } : { userId: "", books, at: Date.now(), origin: "manual" };
+      save("shelf", next);
+      return next;
+    });
+    requestPersistentStorage();
+  };
+
+  const switchMode = (m: Mode) => {
     setMode(m);
     save("mode", m);
   };
@@ -103,11 +172,17 @@ export function Home() {
     switchMode("file");
     setExportHelpOpen(true);
   };
-  useEffect(() => {
-    // New visitors (no saved choice, no saved list) start on the upload while feeds are down.
-    if (feedDown && load<ShelfOrigin | null>("mode", null) === null && !shelf) setMode("file");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedDown]);
+  const standalone = typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches;
+
+  // A list from an export doesn't update itself; after a month, suggest a fresh one.
+  const ageDays = shelf ? Math.floor((Date.now() - shelf.at) / 86_400_000) : 0;
+  const [snoozeUntil, setSnoozeUntil] = useState(() => load("stale-snooze-until", 0));
+  const stale =
+    !!shelf &&
+    shelf.books.length > 0 &&
+    (shelf.origin === "file" || (shelf.origin === "goodreads" && feedDown)) &&
+    ageDays >= 30 &&
+    Date.now() > snoozeUntil;
   const shelfError = fetchShelf.isError && !fetchShelf.variables?.auto ? (fetchShelf.error as Error & { status?: number; code?: string }) : null;
 
   const books = shelf?.books ?? [];
@@ -137,15 +212,21 @@ export function Home() {
             Find your next favorite story <em className="text-link">at the library</em>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Bring your Goodreads or StoryGraph want-to-read list. We'll check every book against your library's catalog
-            and show you what's on the shelf right now.
+            Search for books you want to read, or bring your whole Goodreads or StoryGraph list. We'll check every book
+            against your library's catalog and show you what's on the shelf right now.
           </p>
 
-          <div role="tablist" aria-label="Where your list comes from" className="mt-7 inline-flex rounded-md border border-border/60 bg-card p-1 text-sm">
+          <div
+            id="list-tabs"
+            role="tablist"
+            aria-label="Where your list comes from"
+            className="mt-7 flex w-full max-w-md scroll-mt-24 rounded-md border border-border/60 bg-card p-1 text-[0.82rem] sm:inline-flex sm:w-auto sm:text-sm"
+          >
             {(
               [
-                ["goodreads", "Goodreads ID"],
+                ["search", "Search books"],
                 ["file", "Upload a list"],
+                ["goodreads", "Goodreads ID"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -155,7 +236,7 @@ export function Home() {
                 aria-selected={mode === id}
                 onClick={() => switchMode(id)}
                 className={cx(
-                  "min-h-10 rounded px-4 font-medium transition-colors",
+                  "min-h-10 flex-1 whitespace-nowrap rounded px-2.5 font-medium transition-colors sm:flex-none sm:px-4",
                   mode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -172,7 +253,18 @@ export function Home() {
             </button>
           </p>
 
-          {mode === "goodreads" ? (
+          {mode === "search" ? (
+            <>
+              <BookSearchAdd onList={onListState} onToggle={toggleSearchBook} listCount={books.length} />
+              <p className="mt-3 text-sm text-muted-foreground">
+                Have a Goodreads or StoryGraph list?{" "}
+                <button type="button" onClick={goToExport} className="font-semibold text-link underline underline-offset-2">
+                  Upload it
+                </button>{" "}
+                to check every book at once.
+              </p>
+            </>
+          ) : mode === "goodreads" ? (
           <>
           {feedDown && (
             <div role="status" className="mt-4 max-w-2xl rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm">
@@ -228,8 +320,8 @@ export function Home() {
                 Upload your export file (.csv)
               </label>
               <p className="mt-2 text-sm text-muted-foreground">A StoryGraph or Goodreads library export. The file stays on your device.</p>
+              <ExportGuide key={exportHelpOpen ? "open" : "closed"} defaultOpen={exportHelpOpen} installed={standalone} />
               <StoryGraphHelp />
-              <GoodreadsExportHelp defaultOpen={exportHelpOpen} />
               {fileError && (
                 <p role="alert" className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {fileError}
@@ -307,6 +399,14 @@ export function Home() {
               )}
             </p>
           )}
+          {shelf && shelf.origin === "manual" && mode !== "search" && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {books.length} {books.length === 1 ? "book" : "books"} added by search.{" "}
+              <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => switchMode("search")}>
+                Add more
+              </button>
+            </p>
+          )}
           {shelf && shelf.origin === "file" && (
             <p className="mt-3 text-xs text-muted-foreground">
               {shelf.fileSource === "goodreads" ? "Goodreads" : "StoryGraph"} list uploaded {timeAgo(shelf.at)}
@@ -318,6 +418,42 @@ export function Home() {
           )}
           </div>
         </section>
+
+        {stale && (
+          <div role="status" className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] bg-butter p-5 text-[#4a3728]">
+            <div className="min-w-0 max-w-xl">
+              <p className="font-display text-xl">Your list is {ageDays} days old</p>
+              <p className="mt-1 text-sm">
+                Books you've added on Goodreads or StoryGraph since {new Date(shelf!.at).toLocaleDateString(undefined, { month: "long", day: "numeric" })} won't
+                show up here. Upload a newer export to bring them in.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  goToExport();
+                  setTimeout(() => document.getElementById("list-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                }}
+                className="btn-ledge min-h-11 rounded-full bg-[#f2c4c4] px-5 text-sm font-extrabold"
+                style={{ ["--primary-edge" as string]: "#e3a7a7" }}
+              >
+                Upload a newer export
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const until = Date.now() + 14 * 86_400_000;
+                  save("stale-snooze-until", until);
+                  setSnoozeUntil(until);
+                }}
+                className="text-sm font-bold underline underline-offset-2"
+              >
+                Remind me in 2 weeks
+              </button>
+            </div>
+          </div>
+        )}
 
         {books.length > 0 && !library && (
           <div className="mt-10 rounded-lg border border-border/70 bg-card p-5">
@@ -381,6 +517,11 @@ function ImportOptions({ onUpload, feedDown }: { onUpload: () => void; feedDown:
           <dl className="divide-y divide-border/60">
             {[
               [
+                "Search books",
+                "Find books by title or author and add them one at a time.",
+                "Nothing to import. Books you add stay on your list when you upload an export later.",
+              ],
+              [
                 "Goodreads profile link",
                 "Your Want to Read shelf: title, author, ISBN, cover. Refreshes itself hourly.",
                 feedDown
@@ -415,34 +556,6 @@ function ImportOptions({ onUpload, feedDown }: { onUpload: () => void; feedDown:
               Upload a file
             </button>
           </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function GoodreadsExportHelp({ defaultOpen = false }: { defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="mt-1 text-sm text-muted-foreground">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="py-1 underline underline-offset-2 hover:text-foreground">
-        How do I get my Goodreads export?
-      </button>
-      {open && (
-        <div className="mt-2 rounded-md border border-border/60 bg-card p-3 leading-relaxed">
-          <ol className="list-decimal space-y-1 pl-5">
-            <li>
-              On a computer or in a mobile browser, open{" "}
-              <OutLink href="https://www.goodreads.com/review/import" className="underline">
-                goodreads.com/review/import
-              </OutLink>{" "}
-              (My Books → Import and export). The Goodreads app can't do this.
-            </li>
-            <li>
-              Tap <b>Export Library</b> and wait for the link to appear.
-            </li>
-            <li>Download the CSV file, then upload it here. We use the books on your to-read shelf.</li>
-          </ol>
         </div>
       )}
     </div>
@@ -595,4 +708,10 @@ function PhoneIcon() {
       <path d="M11 18.5h2" strokeLinecap="round" />
     </svg>
   );
+}
+
+/** A new list replaces the old one, but books added by search stay unless the new list has them too. */
+function keepHandAdded(prev: Book[] | undefined, next: Book[]): Book[] {
+  const extra = (prev ?? []).filter((b) => b.source === "search" && !next.some((n) => sameBook(n, b)));
+  return [...next, ...extra];
 }

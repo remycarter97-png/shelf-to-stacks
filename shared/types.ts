@@ -8,8 +8,8 @@ export type Book = {
   imageUrl: string;
   /** Link to the book on the site it came from (Goodreads or StoryGraph). */
   goodreadsUrl: string;
-  /** Where the book came from; defaults to Goodreads. */
-  source?: "goodreads" | "storygraph";
+  /** Where the book came from; defaults to Goodreads. "search" = added by hand on the site. */
+  source?: "goodreads" | "storygraph" | "search";
 };
 
 export type ShelfResponse = { shelfTitle: string; books: Book[] };

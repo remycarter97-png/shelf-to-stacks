@@ -11,7 +11,7 @@ export function isStandalone() {
 }
 
 type Platform = "ios-safari" | "ios-other" | "android" | "desktop";
-function platform(): Platform {
+export function platform(): Platform {
   const ua = navigator.userAgent;
   const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   if (ios) return /CriOS|FxiOS|EdgiOS/.test(ua) ? "ios-other" : "ios-safari";
